@@ -2,7 +2,7 @@
 
 import pytest
 
-from duckdb_builder.query import Table, update
+from duckdb_builder import Table, update
 
 
 def test_update_set_returns_sql() -> None:

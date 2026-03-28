@@ -1,6 +1,6 @@
 import pytest
 
-from duckdb_builder.query import Table, insert
+from duckdb_builder import Table, insert
 
 
 def test_insert_builder_values_returns_sql() -> None:

@@ -2,7 +2,7 @@ from typing import Iterator
 
 import pytest
 
-from duckdb_builder.composite_table import Table
+from duckdb_builder import Table
 
 
 @pytest.fixture(autouse=True)

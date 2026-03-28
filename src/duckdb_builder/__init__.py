@@ -1,2 +1,7 @@
-def main() -> None:
-    print("Hello from duckdb-builder!")  # noqa: T201
+from .composite_table import Table, func
+from .query.delete import delete
+from .query.insert import insert
+from .query.select import select
+from .query.update import update
+
+__all__ = ["Table", "delete", "func", "insert", "select", "update"]

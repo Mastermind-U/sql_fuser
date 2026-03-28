@@ -1,7 +1,12 @@
 from copy import copy
 from typing import Any, Self
 
-from .composite_table import Column, Condition, FunctionCall, Table
+from duckdb_builder.composite_table import (
+    Column,
+    Condition,
+    FunctionCall,
+    Table,
+)
 
 
 class AbstractQuery:

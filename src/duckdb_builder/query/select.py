@@ -1,10 +1,13 @@
-"""Query builder."""
-
 from copy import copy
 from typing import Any, Self
 
-from .abstract_query import AbstractQuery
-from .composite_table import Column, Condition, FunctionCall, Table
+from duckdb_builder.composite_table import (
+    Column,
+    Condition,
+    FunctionCall,
+    Table,
+)
+from duckdb_builder.query.abstract_query import AbstractQuery
 
 
 class select(AbstractQuery):
@@ -333,154 +336,6 @@ class select(AbstractQuery):
         qs._group_by_type = "grouping_sets"
         qs._grouping_sets = column_sets
         return qs
-
-    def from_(self, table: Table | AbstractQuery) -> Self:
-        qs = copy(self)
-        qs._table = table if isinstance(table, Table) else Table(table)
-        return qs
-
-
-class insert(AbstractQuery):
-    def __init__(
-        self,
-        table: Table,
-        *,
-        or_replace: bool = False,
-        or_ignore: bool = False,
-    ) -> None:
-        super().__init__(table=table, columns=())
-        self._values: dict[str, Any] = {}
-        self._or_replace: bool = or_replace
-        self._or_ignore: bool = or_ignore
-
-    def values(self, **values: Any) -> Self:
-        if not values:
-            raise ValueError("No values provided for insert")
-        self._values.update(values)
-        return self
-
-    def build_query(self) -> tuple[str, tuple[Any, ...]]:
-        if not self._values:
-            raise ValueError("No values provided for insert")
-        table = self._get_table()
-
-        columns = list(self._values.keys())
-        col_names = ", ".join(f'"{col}"' for col in columns)
-        placeholders = ", ".join("?" * len(columns))
-        params = tuple(self._values[col] for col in columns)
-
-        insert_stmnt = "INSERT"
-
-        if self._or_replace and self._or_ignore:
-            raise ValueError("Cannot use both or_replace and or_ignore")
-        if self._or_replace:
-            insert_stmnt += " OR REPLACE"
-        elif self._or_ignore:
-            insert_stmnt += " OR IGNORE"
-
-        query = (
-            f'{insert_stmnt} INTO "{table.get_table_name()}" '
-            f"({col_names}) VALUES ({placeholders})"
-        )
-
-        return query, params
-
-
-class update(AbstractQuery):
-    def __init__(self, table: Table) -> None:
-        super().__init__(table=table, columns=())
-        self._values: dict[str, Any] = {}
-
-    def set(self, **values: Any) -> Self:
-        if not values:
-            raise ValueError("No values provided for update")
-        self._values.update(values)
-        return self
-
-    def build_query(self) -> tuple[str, tuple[Any, ...]]:
-        if not self._values:
-            raise ValueError("No values provided for update")
-
-        table = self._get_table()
-        table_alias = table.get_alias()
-        assignments: list[str] = []
-        params: list[Any] = []
-
-        for column_name, value in self._values.items():
-            column_ref = f'"{table_alias}"."{column_name}"'
-
-            if isinstance(value, Column):
-                assignments.append(f"{column_ref} = {value.get_ref()}")
-            elif isinstance(value, FunctionCall):
-                value_sql, value_params = value.to_sql()
-                assignments.append(f"{column_ref} = {value_sql}")
-                params.extend(value_params)
-            else:
-                assignments.append(f"{column_ref} = ?")
-                params.append(value)
-
-        query = (
-            f'UPDATE "{table.get_table_name()}" '  # noqa: S608
-            f'AS "{table_alias}" '
-            f"SET {', '.join(assignments)}"
-        )
-
-        if self._where_condition:
-            where_sql, where_params = self._where_condition.to_sql()
-            query += f" WHERE {where_sql}"
-            params.extend(where_params)
-
-        return query, tuple(params)
-
-
-class delete(AbstractQuery):
-    def __init__(self, table: Table | None = None) -> None:
-        super().__init__(table=table, columns=())
-        self._returning_columns: tuple[Column | FunctionCall, ...] = ()
-        self._returning_all: bool = False
-
-    def returning(self, *columns: Column | FunctionCall) -> Self:
-        if not columns:
-            self._returning_all = True
-            self._returning_columns = ()
-            return self
-
-        if not self._returning_all:
-            self._returning_columns += columns
-
-        return self
-
-    def build_query(self) -> tuple[str, tuple[Any, ...]]:
-        table = self._get_table()
-        query = (
-            f'DELETE FROM "{table.get_table_name()}" '  # noqa: S608
-            f'AS "{table.get_alias()}"'
-        )
-        params: list[Any] = []
-
-        if self._where_condition:
-            where_sql, where_params = self._where_condition.to_sql()
-            query += f" WHERE {where_sql}"
-            params.extend(where_params)
-
-        if self._returning_all:
-            query += " RETURNING *"
-            return query, tuple(params)
-
-        if self._returning_columns:
-            returning_parts: list[str] = []
-
-            for col in self._returning_columns:
-                if isinstance(col, FunctionCall):
-                    func_sql, func_params = col.to_sql()
-                    returning_parts.append(func_sql)
-                    params.extend(func_params)
-                else:
-                    returning_parts.append(f'"{col.table_alias}"."{col.name}"')
-
-            query += f" RETURNING {', '.join(returning_parts)}"
-
-        return query, tuple(params)
 
     def from_(self, table: Table | AbstractQuery) -> Self:
         qs = copy(self)

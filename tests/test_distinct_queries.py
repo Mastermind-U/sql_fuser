@@ -1,7 +1,6 @@
 """Tests for DISTINCT clause."""
 
-from duckdb_builder.composite_table import Table
-from duckdb_builder.query import select
+from duckdb_builder import Table, select
 
 
 def test_distinct_all_columns() -> None:

@@ -1,7 +1,6 @@
 """Tests for JOIN queries."""
 
-from duckdb_builder.composite_table import Table
-from duckdb_builder.query import select
+from duckdb_builder import Table, select
 
 
 def test_inner_join_basic() -> None:
@@ -10,9 +9,11 @@ def test_inner_join_basic() -> None:
     orders = Table("orders")
     q = select().from_(users).join(orders, users.id == orders.user_id)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id"'
+    assert sql == (
+        "SELECT * "
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id"'
     )
     assert params == ()
 
@@ -27,9 +28,11 @@ def test_inner_join_with_columns() -> None:
         .join(orders, users.id == orders.user_id)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."name", "b"."total" FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id"'
+    assert sql == (
+        'SELECT "a"."name", "b"."total" '
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id"'
     )
     assert params == ()
 
@@ -45,9 +48,12 @@ def test_inner_join_with_where() -> None:
         .where_by(status="completed")
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" WHERE "a"."status" = ?'
+    assert sql == (
+        "SELECT * "
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id" '
+        'WHERE "a"."status" = ?'
     )
     assert params == ("completed",)
 
@@ -63,9 +69,12 @@ def test_inner_join_with_group_by() -> None:
         .group_by(users.name)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."name", "b"."total" FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" GROUP BY "a"."name"'
+    assert sql == (
+        'SELECT "a"."name", "b"."total" '
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id" '
+        'GROUP BY "a"."name"'
     )
     assert params == ()
 
@@ -76,9 +85,11 @@ def test_left_join_basic() -> None:
     orders = Table("orders")
     q = select().from_(users).left_join(orders, users.id == orders.user_id)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "users" AS "a" LEFT JOIN "orders" AS "b" ON "a"."id" = "b"."user_id"'
+    assert sql == (
+        "SELECT * "
+        'FROM "users" AS "a" '
+        'LEFT JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id"'
     )
     assert params == ()
 
@@ -93,9 +104,11 @@ def test_left_join_with_columns() -> None:
         .left_join(orders, users.id == orders.user_id)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."name", "b"."total" FROM "users" AS "a" LEFT JOIN "orders" AS "b" ON "a"."id" = "b"."user_id"'
+    assert sql == (
+        'SELECT "a"."name", "b"."total" '
+        'FROM "users" AS "a" '
+        'LEFT JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id"'
     )
     assert params == ()
 
@@ -111,9 +124,12 @@ def test_left_join_with_where() -> None:
         .where_by(status="active")
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "users" AS "a" LEFT JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" WHERE "a"."status" = ?'
+    assert sql == (
+        "SELECT * "
+        'FROM "users" AS "a" '
+        'LEFT JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id" '
+        'WHERE "a"."status" = ?'
     )
     assert params == ("active",)
 
@@ -124,9 +140,11 @@ def test_right_join_basic() -> None:
     orders = Table("orders")
     q = select().from_(users).right_join(orders, users.id == orders.user_id)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "users" AS "a" RIGHT JOIN "orders" AS "b" ON "a"."id" = "b"."user_id"'
+    assert sql == (
+        "SELECT * "
+        'FROM "users" AS "a" '
+        'RIGHT JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id"'
     )
     assert params == ()
 
@@ -142,9 +160,12 @@ def test_right_join_with_where() -> None:
         .where_by(total=100)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "users" AS "a" RIGHT JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" WHERE "a"."total" = ?'
+    assert sql == (
+        "SELECT * "
+        'FROM "users" AS "a" '
+        'RIGHT JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id" '
+        'WHERE "a"."total" = ?'
     )
     assert params == (100,)
 
@@ -155,9 +176,11 @@ def test_full_outer_join_basic() -> None:
     orders = Table("orders")
     q = select().from_(users).full_join(orders, users.id == orders.user_id)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "users" AS "a" FULL OUTER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id"'
+    assert sql == (
+        "SELECT * "
+        'FROM "users" AS "a" '
+        'FULL OUTER JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id"'
     )
     assert params == ()
 
@@ -172,9 +195,11 @@ def test_full_outer_join_with_columns() -> None:
         .full_join(orders, users.id == orders.user_id)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."name", "b"."amount" FROM "users" AS "a" FULL OUTER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id"'
+    assert sql == (
+        'SELECT "a"."name", "b"."amount" '
+        'FROM "users" AS "a" '
+        'FULL OUTER JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id"'
     )
     assert params == ()
 
@@ -185,7 +210,9 @@ def test_cross_join_basic() -> None:
     table_b = Table("table_b")
     q = select().from_(table_a).cross_join(table_b)
     sql, params = q.build_query()
-    assert sql == 'SELECT * FROM "table_a" AS "a" CROSS JOIN "table_b" AS "b"'
+    assert sql == (
+        'SELECT * FROM "table_a" AS "a" CROSS JOIN "table_b" AS "b"'
+    )
     assert params == ()
 
 
@@ -195,9 +222,10 @@ def test_cross_join_with_columns() -> None:
     table_b = Table("table_b")
     q = select(table_a.id, table_b.value).from_(table_a).cross_join(table_b)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."id", "b"."value" FROM "table_a" AS "a" CROSS JOIN "table_b" AS "b"'
+    assert sql == (
+        'SELECT "a"."id", "b"."value" '
+        'FROM "table_a" AS "a" '
+        'CROSS JOIN "table_b" AS "b"'
     )
     assert params == ()
 
@@ -213,9 +241,11 @@ def test_cross_join_with_where() -> None:
         .where_by(category="premium")
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "table_a" AS "a" CROSS JOIN "table_b" AS "b" WHERE "a"."category" = ?'
+    assert sql == (
+        "SELECT * "
+        'FROM "table_a" AS "a" '
+        'CROSS JOIN "table_b" AS "b" '
+        'WHERE "a"."category" = ?'
     )
     assert params == ("premium",)
 
@@ -230,9 +260,11 @@ def test_semi_join_basic() -> None:
         .semi_join(airport_names, city_airport.iata == airport_names.iata)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "city_airport" AS "a" SEMI JOIN "airport_names" AS "b" ON "a"."iata" = "b"."iata"'
+    assert sql == (
+        "SELECT * "
+        'FROM "city_airport" AS "a" '
+        'SEMI JOIN "airport_names" AS "b" '
+        'ON "a"."iata" = "b"."iata"'
     )
     assert params == ()
 
@@ -247,9 +279,11 @@ def test_semi_join_with_columns() -> None:
         .semi_join(airport_names, city_airport.iata == airport_names.iata)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."city", "a"."iata" FROM "city_airport" AS "a" SEMI JOIN "airport_names" AS "b" ON "a"."iata" = "b"."iata"'
+    assert sql == (
+        'SELECT "a"."city", "a"."iata" '
+        'FROM "city_airport" AS "a" '
+        'SEMI JOIN "airport_names" AS "b" '
+        'ON "a"."iata" = "b"."iata"'
     )
     assert params == ()
 
@@ -265,9 +299,12 @@ def test_semi_join_with_where() -> None:
         .where_by(country="USA")
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "city_airport" AS "a" SEMI JOIN "airport_names" AS "b" ON "a"."iata" = "b"."iata" WHERE "a"."country" = ?'
+    assert sql == (
+        "SELECT * "
+        'FROM "city_airport" AS "a" '
+        'SEMI JOIN "airport_names" AS "b" '
+        'ON "a"."iata" = "b"."iata" '
+        'WHERE "a"."country" = ?'
     )
     assert params == ("USA",)
 
@@ -282,9 +319,11 @@ def test_anti_join_basic() -> None:
         .anti_join(airport_names, city_airport.iata == airport_names.iata)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "city_airport" AS "a" ANTI JOIN "airport_names" AS "b" ON "a"."iata" = "b"."iata"'
+    assert sql == (
+        "SELECT * "
+        'FROM "city_airport" AS "a" '
+        'ANTI JOIN "airport_names" AS "b" '
+        'ON "a"."iata" = "b"."iata"'
     )
     assert params == ()
 
@@ -299,9 +338,11 @@ def test_anti_join_with_columns() -> None:
         .anti_join(airport_names, city_airport.iata == airport_names.iata)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."city", "a"."iata" FROM "city_airport" AS "a" ANTI JOIN "airport_names" AS "b" ON "a"."iata" = "b"."iata"'
+    assert sql == (
+        'SELECT "a"."city", "a"."iata" '
+        'FROM "city_airport" AS "a" '
+        'ANTI JOIN "airport_names" AS "b" '
+        'ON "a"."iata" = "b"."iata"'
     )
     assert params == ()
 
@@ -317,9 +358,12 @@ def test_anti_join_with_where() -> None:
         .where_by(status="inactive")
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "city_airport" AS "a" ANTI JOIN "airport_names" AS "b" ON "a"."iata" = "b"."iata" WHERE "a"."status" = ?'
+    assert sql == (
+        "SELECT * "
+        'FROM "city_airport" AS "a" '
+        'ANTI JOIN "airport_names" AS "b" '
+        'ON "a"."iata" = "b"."iata" '
+        'WHERE "a"."status" = ?'
     )
     assert params == ("inactive",)
 
@@ -336,9 +380,13 @@ def test_multiple_joins_inner_left() -> None:
         .left_join(items, orders.id == items.order_id)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" LEFT JOIN "items" AS "c" ON "b"."id" = "c"."order_id"'
+    assert sql == (
+        "SELECT * "
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id" '
+        'LEFT JOIN "items" AS "c" '
+        'ON "b"."id" = "c"."order_id"'
     )
     assert params == ()
 
@@ -357,9 +405,15 @@ def test_multiple_joins_with_where_and_group_by() -> None:
         .group_by(users.name)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."name" FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" INNER JOIN "payments" AS "c" ON "b"."id" = "c"."order_id" WHERE "a"."status" = ? GROUP BY "a"."name"'
+    assert sql == (
+        'SELECT "a"."name" '
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id" '
+        'INNER JOIN "payments" AS "c" '
+        'ON "b"."id" = "c"."order_id" '
+        'WHERE "a"."status" = ? '
+        'GROUP BY "a"."name"'
     )
     assert params == ("completed",)
 
@@ -378,9 +432,15 @@ def test_join_semi_anti_combination() -> None:
         .anti_join(table_d, table_a.id == table_d.a_id)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "table_a" AS "a" INNER JOIN "table_b" AS "b" ON "a"."id" = "b"."a_id" SEMI JOIN "table_c" AS "c" ON "a"."status" = "c"."status" ANTI JOIN "table_d" AS "d" ON "a"."id" = "d"."a_id"'
+    assert sql == (
+        "SELECT * "
+        'FROM "table_a" AS "a" '
+        'INNER JOIN "table_b" AS "b" '
+        'ON "a"."id" = "b"."a_id" '
+        'SEMI JOIN "table_c" AS "c" '
+        'ON "a"."status" = "c"."status" '
+        'ANTI JOIN "table_d" AS "d" '
+        'ON "a"."id" = "d"."a_id"'
     )
     assert params == ()
 
@@ -397,9 +457,12 @@ def test_cross_join_with_inner_join() -> None:
         .join(table_c, table_a.id == table_c.a_id)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "table_a" AS "a" CROSS JOIN "table_b" AS "b" INNER JOIN "table_c" AS "c" ON "a"."id" = "c"."a_id"'
+    assert sql == (
+        "SELECT * "
+        'FROM "table_a" AS "a" '
+        'CROSS JOIN "table_b" AS "b" '
+        'INNER JOIN "table_c" AS "c" '
+        'ON "a"."id" = "c"."a_id"'
     )
     assert params == ()
 
@@ -410,9 +473,11 @@ def test_join_with_not_equal_operator() -> None:
     banned = Table("banned_users")
     q = select().from_(users).join(banned, users.id != banned.user_id)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "users" AS "a" INNER JOIN "banned_users" AS "b" ON "a"."id" != "b"."user_id"'
+    assert sql == (
+        "SELECT * "
+        'FROM "users" AS "a" '
+        'INNER JOIN "banned_users" AS "b" '
+        'ON "a"."id" != "b"."user_id"'
     )
     assert params == ()
 
@@ -423,9 +488,11 @@ def test_join_with_greater_than_operator() -> None:
     orders2 = Table("orders2")
     q = select().from_(orders1).join(orders2, orders1.amount > orders2.amount)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "orders1" AS "a" INNER JOIN "orders2" AS "b" ON "a"."amount" > "b"."amount"'
+    assert sql == (
+        "SELECT * "
+        'FROM "orders1" AS "a" '
+        'INNER JOIN "orders2" AS "b" '
+        'ON "a"."amount" > "b"."amount"'
     )
     assert params == ()
 
@@ -436,9 +503,11 @@ def test_join_with_less_than_or_equal_operator() -> None:
     prices2 = Table("prices2")
     q = select().from_(prices1).join(prices2, prices1.price <= prices2.price)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "prices1" AS "a" INNER JOIN "prices2" AS "b" ON "a"."price" <= "b"."price"'
+    assert sql == (
+        "SELECT * "
+        'FROM "prices1" AS "a" '
+        'INNER JOIN "prices2" AS "b" '
+        'ON "a"."price" <= "b"."price"'
     )
     assert params == ()
 
@@ -452,9 +521,11 @@ def test_join_with_multiple_conditions() -> None:
     )
     q = select().from_(orders).join(invoices, condition)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "orders" AS "a" INNER JOIN "invoices" AS "b" ON ("a"."id" = "b"."order_id" AND "a"."customer_id" = "b"."customer_id")'
+    assert sql == (
+        "SELECT * "
+        'FROM "orders" AS "a" '
+        'INNER JOIN "invoices" AS "b" '
+        'ON ("a"."id" = "b"."order_id" AND "a"."customer_id" = "b"."customer_id")'
     )
     assert params == ()
 
@@ -468,9 +539,11 @@ def test_join_with_or_conditions() -> None:
     )
     q = select().from_(table_a).join(table_b, condition)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "table_a" AS "a" INNER JOIN "table_b" AS "b" ON ("a"."id" = "b"."primary_id" OR "a"."id" = "b"."secondary_id")'
+    assert sql == (
+        "SELECT * "
+        'FROM "table_a" AS "a" '
+        'INNER JOIN "table_b" AS "b" '
+        'ON ("a"."id" = "b"."primary_id" OR "a"."id" = "b"."secondary_id")'
     )
     assert params == ()
 
@@ -488,8 +561,11 @@ def test_join_with_where_parameterized() -> None:
         .where_by(status="active", country="USA")
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" WHERE ("a"."age" > ? AND ("a"."status" = ? AND "a"."country" = ?))'
+    assert sql == (
+        "SELECT * "
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" '
+        'ON "a"."id" = "b"."user_id" '
+        'WHERE ("a"."age" > ? AND ("a"."status" = ? AND "a"."country" = ?))'
     )
     assert params == (18, "active", "USA")

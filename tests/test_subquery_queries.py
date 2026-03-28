@@ -1,7 +1,6 @@
 """Tests for subquery support."""
 
-from duckdb_builder.composite_table import Table
-from duckdb_builder.query import select
+from duckdb_builder import Table, select
 
 
 def test_select_from_subquery() -> None:

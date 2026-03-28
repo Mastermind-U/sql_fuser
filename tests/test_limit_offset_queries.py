@@ -2,8 +2,7 @@
 
 import pytest
 
-from duckdb_builder.composite_table import Table
-from duckdb_builder.query import select
+from duckdb_builder import Table, select
 
 
 def test_limit_basic() -> None:
@@ -40,9 +39,10 @@ def test_limit_with_group_by() -> None:
     users = Table("users")
     q = select(users.category).from_(users).group_by(users.category).limit(3)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."category" FROM "users" AS "a" GROUP BY "a"."category" LIMIT 3'
+    assert sql == (
+        'SELECT "a"."category" '
+        'FROM "users" AS "a" GROUP BY "a"."category" '
+        "LIMIT 3"
     )
     assert params == ()
 
@@ -131,9 +131,8 @@ def test_limit_offset_with_where() -> None:
     users = Table("users")
     q = select().from_(users).where_by(status="active").limit(10).offset(5)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "users" AS "a" WHERE "a"."status" = ? LIMIT 10 OFFSET 5'
+    assert sql == (
+        'SELECT * FROM "users" AS "a" WHERE "a"."status" = ? LIMIT 10 OFFSET 5'
     )
     assert params == ("active",)
 
@@ -149,9 +148,11 @@ def test_limit_offset_with_group_by() -> None:
         .offset(3)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."customer_id" FROM "orders" AS "a" GROUP BY "a"."customer_id" LIMIT 15 OFFSET 3'
+    assert sql == (
+        'SELECT "a"."customer_id" '
+        'FROM "orders" AS "a" '
+        'GROUP BY "a"."customer_id" '
+        "LIMIT 15 OFFSET 3"
     )
     assert params == ()
 
@@ -168,9 +169,11 @@ def test_limit_offset_with_having() -> None:
         .offset(2)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."customer_id" FROM "orders" AS "a" GROUP BY "a"."customer_id" HAVING "a"."customer_id" = ? LIMIT 5 OFFSET 2'
+    assert sql == (
+        'SELECT "a"."customer_id" '
+        'FROM "orders" AS "a" '
+        'GROUP BY "a"."customer_id" '
+        'HAVING "a"."customer_id" = ? LIMIT 5 OFFSET 2'
     )
     assert params == ("ABC123",)
 
@@ -187,9 +190,11 @@ def test_limit_offset_with_join() -> None:
         .offset(5)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."name", "b"."total" FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" LIMIT 10 OFFSET 5'
+    assert sql == (
+        'SELECT "a"."name", "b"."total" '
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" '
+        "LIMIT 10 OFFSET 5"
     )
     assert params == ()
 
@@ -208,9 +213,11 @@ def test_limit_offset_with_multiple_joins() -> None:
         .offset(16)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT * FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" INNER JOIN "items" AS "c" ON "b"."id" = "c"."order_id" LIMIT 8 OFFSET 16'
+    assert sql == (
+        'SELECT * FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" '
+        'INNER JOIN "items" AS "c" ON "b"."id" = "c"."order_id" '
+        "LIMIT 8 OFFSET 16"
     )
     assert params == ()
 
@@ -229,9 +236,13 @@ def test_complex_query_with_limit_offset() -> None:
         .offset(10)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."name", "b"."total" FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" WHERE "a"."status" = ? GROUP BY "a"."name" LIMIT 5 OFFSET 10'
+    assert sql == (
+        'SELECT "a"."name", "b"."total" '
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" '
+        'WHERE "a"."status" = ? '
+        'GROUP BY "a"."name" '
+        "LIMIT 5 OFFSET 10"
     )
     assert params == ("completed",)
 

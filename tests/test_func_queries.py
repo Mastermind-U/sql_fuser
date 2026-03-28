@@ -4,8 +4,7 @@ from typing import Iterator
 
 import pytest
 
-from duckdb_builder.composite_table import Table, func
-from duckdb_builder.query import select
+from duckdb_builder import Table, func, select
 
 
 @pytest.fixture(autouse=True)
