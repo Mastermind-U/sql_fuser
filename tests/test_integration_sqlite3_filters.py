@@ -6,11 +6,14 @@ from typing import Any
 
 import pytest
 
-from sql_fusion import Table, select
+from sql_fusion import Table, delete, insert, select, update
 
 MIN_USER_AGE = 30
 MIN_JOIN_TOTAL = 100
 MAX_PENDING_TOTAL = 60
+NEW_USER_ID = 6
+UPDATED_USER_ID = 2
+DELETED_USER_ID = 4
 
 
 @pytest.fixture
@@ -82,6 +85,23 @@ def _fetch_rows(
     params: tuple[Any, ...],
 ) -> list[tuple[Any, ...]]:
     return connection.execute(sql, params).fetchall()
+
+
+def _sqlite_update_set_unqualified(
+    sql: str,
+    params: tuple[Any, ...],
+) -> tuple[str, tuple[Any, ...]]:
+    qualified_ref = '"a".'
+    before_set, after_set = sql.split(" SET ", 1)
+    if " WHERE " in after_set:
+        set_clause, tail = after_set.split(" WHERE ", 1)
+        return (
+            f"{before_set} SET {set_clause.replace(qualified_ref, '')} "
+            f"WHERE {tail}",
+            params,
+        )
+
+    return f"{before_set} SET {after_set.replace(qualified_ref, '')}", params
 
 
 def test_complex_user_filter(sqlite_db: sqlite3.Connection) -> None:
@@ -157,3 +177,71 @@ def test_complex_subquery_filter(sqlite_db: sqlite3.Connection) -> None:
     rows = _fetch_rows(sqlite_db, query, params)
 
     assert sorted(rows) == [(1, "Alice"), (3, "Carol")]
+
+
+def test_insert_user_row(sqlite_db: sqlite3.Connection) -> None:
+    users = Table("users")
+
+    query, params = (
+        insert(users)
+        .values(
+            id=NEW_USER_ID,
+            name="Frank",
+            age=31,
+            status="active",
+            country="US",
+            email="frank@example.com",
+        )
+        .compile()
+    )
+    _fetch_rows(sqlite_db, query, params)
+
+    rows = _fetch_rows(
+        sqlite_db,
+        "SELECT id, name, age, status, country, email FROM users WHERE id = ?",
+        (NEW_USER_ID,),
+    )
+
+    assert rows == [
+        (NEW_USER_ID, "Frank", 31, "active", "US", "frank@example.com"),
+    ]
+
+
+def test_update_user_row(sqlite_db: sqlite3.Connection) -> None:
+    users = Table("users")
+
+    query, params = (
+        update(users)
+        .set(status="active", age=29)
+        .where(users.id == UPDATED_USER_ID)
+        .compile_expression(_sqlite_update_set_unqualified)
+        .compile()
+    )
+    _fetch_rows(sqlite_db, query, params)
+
+    rows = _fetch_rows(
+        sqlite_db,
+        "SELECT id, name, age, status FROM users WHERE id = ?",
+        (UPDATED_USER_ID,),
+    )
+
+    assert rows == [
+        (UPDATED_USER_ID, "Bob", 29, "active"),
+    ]
+
+
+def test_delete_user_row(sqlite_db: sqlite3.Connection) -> None:
+    users = Table("users")
+
+    query, params = (
+        delete().from_(users).where(users.id == DELETED_USER_ID).compile()
+    )
+    _fetch_rows(sqlite_db, query, params)
+
+    rows = _fetch_rows(
+        sqlite_db,
+        "SELECT COUNT(*) FROM users WHERE id = ?",
+        (DELETED_USER_ID,),
+    )
+
+    assert rows == [(0,)]
