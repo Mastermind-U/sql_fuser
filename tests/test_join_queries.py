@@ -1,6 +1,6 @@
 """Tests for JOIN queries."""
 
-from duckdb_builder import Table, select
+from sql_fusion import Table, select
 
 
 def test_inner_join_basic() -> None:
@@ -525,7 +525,8 @@ def test_join_with_multiple_conditions() -> None:
         "SELECT * "
         'FROM "orders" AS "a" '
         'INNER JOIN "invoices" AS "b" '
-        'ON ("a"."id" = "b"."order_id" AND "a"."customer_id" = "b"."customer_id")'
+        'ON ("a"."id" = "b"."order_id" '
+        'AND "a"."customer_id" = "b"."customer_id")'
     )
     assert params == ()
 

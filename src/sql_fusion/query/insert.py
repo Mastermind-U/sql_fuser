@@ -1,7 +1,7 @@
 from typing import Any, Self
 
-from duckdb_builder.composite_table import Table
-from duckdb_builder.query.abstract_query import AbstractQuery
+from sql_fusion.composite_table import Table
+from sql_fusion.query.abstract_query import AbstractQuery
 
 
 class insert(AbstractQuery):

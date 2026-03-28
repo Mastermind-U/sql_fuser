@@ -1,5 +1,5 @@
 [project]
-name = "duckdb-builder"
+name = "SQLFusion"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -130,7 +130,7 @@ ignore-variadic-names = true
 max-complexity = 15
 
 [tool.ruff.lint.isort]
-known-first-party = ["duckdb_builder"]
+known-first-party = ["sql_fusion"]
 split-on-trailing-comma = false
 combine-as-imports = true
 

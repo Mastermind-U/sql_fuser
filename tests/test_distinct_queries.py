@@ -1,6 +1,6 @@
 """Tests for DISTINCT clause."""
 
-from duckdb_builder import Table, select
+from sql_fusion import Table, select
 
 
 def test_distinct_all_columns() -> None:

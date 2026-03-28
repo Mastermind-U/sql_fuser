@@ -1,6 +1,6 @@
 import pytest
 
-from duckdb_builder import Table, select
+from sql_fusion import Table, select
 
 
 def test_group_by_single_column() -> None:

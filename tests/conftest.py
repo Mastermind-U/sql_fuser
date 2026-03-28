@@ -2,7 +2,7 @@ from typing import Iterator
 
 import pytest
 
-from duckdb_builder import Table
+from sql_fusion import Table
 
 
 @pytest.fixture(autouse=True)

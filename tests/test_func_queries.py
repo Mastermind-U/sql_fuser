@@ -4,7 +4,7 @@ from typing import Iterator
 
 import pytest
 
-from duckdb_builder import Table, func, select
+from sql_fusion import Table, func, select
 
 
 @pytest.fixture(autouse=True)

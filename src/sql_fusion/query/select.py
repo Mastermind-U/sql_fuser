@@ -1,13 +1,8 @@
 from copy import copy
 from typing import Any, Self
 
-from duckdb_builder.composite_table import (
-    Column,
-    Condition,
-    FunctionCall,
-    Table,
-)
-from duckdb_builder.query.abstract_query import AbstractQuery
+from sql_fusion.composite_table import Column, Condition, FunctionCall, Table
+from sql_fusion.query.abstract_query import AbstractQuery
 
 
 class select(AbstractQuery):

@@ -2,7 +2,7 @@
 
 import pytest
 
-from duckdb_builder import Table, select, update
+from sql_fusion import Table, select, update
 
 
 def test_select_with_single_cte() -> None:
@@ -103,9 +103,7 @@ def test_select_with_recursive_cte() -> None:
 def test_clause_comment_after_with_inserts_hint_into_cte_header() -> None:
     orders = Table("orders")
     recent_orders = (
-        select(orders.user_id)
-        .from_(orders)
-        .where_by(status="paid")
+        select(orders.user_id).from_(orders).where_by(status="paid")
     )
 
     query, params = (
@@ -117,7 +115,7 @@ def test_clause_comment_after_with_inserts_hint_into_cte_header() -> None:
     )
 
     assert query == (
-        'WITH /*+ SeqScan (ta) IndexScan (tb) */\n'
+        "WITH /*+ SeqScan (ta) IndexScan (tb) */\n"
         '"recent_orders" AS (SELECT "a"."user_id" FROM "orders" AS "a" '
         'WHERE "a"."status" = ?) '
         'SELECT * FROM "recent_orders" AS "b"'
@@ -135,9 +133,7 @@ def test_clause_comment_after_from_inserts_hint_before_table_name() -> None:
         .compile()
     )
 
-    assert query == (
-        'SELECT "a"."id" FROM /*+ SeqScan (a) */\n"users" AS "a"'
-    )
+    assert query == ('SELECT "a"."id" FROM /*+ SeqScan (a) */\n"users" AS "a"')
     assert params == ()
 
 
@@ -153,7 +149,7 @@ def test_clause_comments_work_on_update_clauses() -> None:
     )
 
     assert query == (
-        '/* debug */\n'
+        "/* debug */\n"
         'UPDATE "users" AS "a" SET /*+ SeqScan (a) */\n"a"."status" = ?'
     )
     assert params == ("inactive",)

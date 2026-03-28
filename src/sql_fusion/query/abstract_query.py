@@ -2,7 +2,7 @@ from collections.abc import Callable
 from copy import copy
 from typing import Any, Self
 
-from duckdb_builder.composite_table import (
+from sql_fusion.composite_table import (
     Column,
     Condition,
     FunctionCall,

@@ -1,6 +1,6 @@
 """Tests for subquery support."""
 
-from duckdb_builder import Table, select
+from sql_fusion import Table, select
 
 
 def test_select_from_subquery() -> None:

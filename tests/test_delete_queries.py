@@ -1,6 +1,6 @@
 """Tests for DELETE queries."""
 
-from duckdb_builder import Table, delete, func
+from sql_fusion import Table, delete, func
 
 
 def test_delete_returning_all() -> None:

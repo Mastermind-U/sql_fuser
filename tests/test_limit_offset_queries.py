@@ -2,7 +2,7 @@
 
 import pytest
 
-from duckdb_builder import Table, select
+from sql_fusion import Table, select
 
 
 def test_limit_basic() -> None:

@@ -1,6 +1,6 @@
 import pytest
 
-from duckdb_builder import Table, insert
+from sql_fusion import Table, insert
 
 
 def test_insert_builder_values_returns_sql() -> None:
