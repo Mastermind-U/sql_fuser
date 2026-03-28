@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from copy import copy
 from typing import Any, Self
 
@@ -9,18 +10,24 @@ from duckdb_builder.composite_table import (
     Table,
 )
 
+CompileExpression = Callable[
+    [str, tuple[Any, ...]],
+    tuple[str, tuple[Any, ...]],
+]
+
 
 class AbstractQuery:
     def __init__(
         self,
         table: Table | None,
         columns: tuple[Column | FunctionCall, ...] = (),
-        ) -> None:
+    ) -> None:
         self._table: Table | None = table
         self._columns: tuple[Column | FunctionCall, ...] = columns
         self._where_condition: Condition | None = None
         self._ctes: list[tuple[str, QueryLike]] = []
         self._with_recursive: bool = False
+        self._compile_expressions: list[CompileExpression] = []
 
     def _get_table(self) -> Table:
         if self._table is None:
@@ -47,6 +54,45 @@ class AbstractQuery:
                 qs._where_condition = qs._where_condition & combined_condition
 
         return qs
+
+    def compile_expression(self, expression: CompileExpression) -> Self:
+        qs = copy(self)
+        qs._compile_expressions = self._compile_expressions.copy()
+        qs._compile_expressions.append(expression)
+        return qs
+
+    def comment(self, text: str, *, hint: bool = False) -> Self:
+        def _add_comment(
+            sql: str,
+            params: tuple[Any, ...],
+        ) -> tuple[str, tuple[Any, ...]]:
+            prefix = "+ " if hint else " "
+            return f"/*{prefix}{text} */\n{sql}", params
+
+        return self.compile_expression(_add_comment)
+
+    def explain(
+        self,
+        *,
+        analyze: bool = False,
+        verbose: bool = False,
+    ) -> Self:
+        def _add_explain(
+            sql: str,
+            params: tuple[Any, ...],
+        ) -> tuple[str, tuple[Any, ...]]:
+            explain_parts = ["EXPLAIN"]
+            if analyze:
+                explain_parts.append("ANALYZE")
+            if verbose:
+                explain_parts.append("VERBOSE")
+            explain_parts.append(sql)
+            return " ".join(explain_parts), params
+
+        return self.compile_expression(_add_explain)
+
+    def analyze(self, *, verbose: bool = False) -> Self:
+        return self.explain(analyze=True, verbose=verbose)
 
     def where_by(
         self,
@@ -108,6 +154,16 @@ class AbstractQuery:
 
         recursive_part = " RECURSIVE" if self._with_recursive else ""
         return f"WITH{recursive_part} {', '.join(with_parts)} ", params
+
+    def _apply_compile_expressions(
+        self,
+        sql: str,
+        params: tuple[Any, ...],
+    ) -> tuple[str, tuple[Any, ...]]:
+        for expression in self._compile_expressions:
+            sql, params = expression(sql, params)
+
+        return sql, params
 
     def build_query(self) -> tuple[str, tuple[Any, ...]]:
         raise NotImplementedError()

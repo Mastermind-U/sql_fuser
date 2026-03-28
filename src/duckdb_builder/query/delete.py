@@ -38,7 +38,7 @@ class delete(AbstractQuery):
 
         if self._returning_all:
             query += " RETURNING *"
-            return query, tuple(params)
+            return self._apply_compile_expressions(query, tuple(params))
 
         if self._returning_columns:
             returning_parts: list[str] = []
@@ -53,7 +53,7 @@ class delete(AbstractQuery):
 
             query += f" RETURNING {', '.join(returning_parts)}"
 
-        return query, tuple(params)
+        return self._apply_compile_expressions(query, tuple(params))
 
     def from_(self, table: Table | AbstractQuery) -> Self:
         qs = copy(self)

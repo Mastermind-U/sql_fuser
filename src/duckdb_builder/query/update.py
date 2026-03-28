@@ -49,4 +49,7 @@ class update(AbstractQuery):
             query += f" WHERE {where_sql}"
             params.extend(where_params)
 
-        return query, tuple(with_params + params)
+        return self._apply_compile_expressions(
+            query,
+            tuple(with_params + params),
+        )

@@ -85,7 +85,7 @@ class select(AbstractQuery):
         if self._offset is not None:
             query += f" OFFSET {self._offset}"
 
-        return query, tuple(params)
+        return self._apply_compile_expressions(query, tuple(params))
 
     def _build_joins(self) -> tuple[str, list[Any]]:
         """Build JOIN clauses and return SQL string and parameters."""

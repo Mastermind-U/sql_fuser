@@ -48,4 +48,7 @@ class insert(AbstractQuery):
             f"({col_names}) VALUES ({placeholders})"
         )
 
-        return query, tuple(with_params) + params
+        return self._apply_compile_expressions(
+            query,
+            tuple(with_params) + params,
+        )
