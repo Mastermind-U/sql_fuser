@@ -2,7 +2,7 @@
 
 import pytest
 
-from sql_fusion import Table, update
+from sql_fusion import Table, select, update
 
 
 def test_update_set_returns_sql() -> None:
@@ -40,6 +40,28 @@ def test_update_with_where_clause() -> None:
         == 'UPDATE "users" AS "a" SET "a"."status" = ? WHERE "a"."id" = ?'
     )
     assert params == ("inactive", 5)
+
+
+def test_update_with_subquery_in_where_clause() -> None:
+    users = Table("users")
+    orders = Table("orders")
+    paid_order_user_ids = (
+        select(orders.user_id).from_(orders).where_by(status="paid")
+    )
+    query, params = (
+        update(users)
+        .set(status="inactive")
+        .where(users.id.in_(paid_order_user_ids))
+        .compile()
+    )
+    assert query == (
+        'UPDATE "users" AS "a" SET "a"."status" = ? '
+        'WHERE "a"."id" IN '
+        '(SELECT "b"."user_id" '
+        'FROM "orders" AS "b" '
+        'WHERE "b"."status" = ?)'
+    )
+    assert params == ("inactive", "paid")
 
 
 def test_update_values_must_be_provided_once() -> None:
