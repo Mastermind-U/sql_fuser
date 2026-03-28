@@ -386,3 +386,52 @@ class update(AbstractQuery):
             params.extend(where_params)
 
         return query, tuple(params)
+
+
+class delete(AbstractQuery):
+    def __init__(self, table: Table) -> None:
+        super().__init__(table=table, columns=())
+        self._returning_columns: tuple[Column | FunctionCall, ...] = ()
+        self._returning_all: bool = False
+
+    def returning(self, *columns: Column | FunctionCall) -> Self:
+        if not columns:
+            self._returning_all = True
+            self._returning_columns = ()
+            return self
+
+        if not self._returning_all:
+            self._returning_columns += columns
+
+        return self
+
+    def build_query(self) -> tuple[str, tuple[Any, ...]]:
+        query = (
+            f'DELETE FROM "{self._table.get_table_name()}" '  # noqa: S608
+            f'AS "{self._table.get_alias()}"'
+        )
+        params: list[Any] = []
+
+        if self._where_condition:
+            where_sql, where_params = self._where_condition.to_sql()
+            query += f" WHERE {where_sql}"
+            params.extend(where_params)
+
+        if self._returning_all:
+            query += " RETURNING *"
+            return query, tuple(params)
+
+        if self._returning_columns:
+            returning_parts: list[str] = []
+
+            for col in self._returning_columns:
+                if isinstance(col, FunctionCall):
+                    func_sql, func_params = col.to_sql()
+                    returning_parts.append(func_sql)
+                    params.extend(func_params)
+                else:
+                    returning_parts.append(f'"{col.table_alias}"."{col.name}"')
+
+            query += f" RETURNING {', '.join(returning_parts)}"
+
+        return query, tuple(params)
