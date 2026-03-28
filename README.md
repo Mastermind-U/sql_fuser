@@ -24,12 +24,12 @@ That makes it easy to plug into your own connection layer.
 - [Quickstart: DuckDB](#quickstart-duckdb)
 - [Quickstart: psycopg3](#quickstart-psycopg3)
 - [Query Basics](#query-basics)
+- [Subquery Example](#subquery-example)
 - [Method Reference](#method-reference)
 - [Functions](#functions)
 - [CTEs](#ctes)
 - [Custom Compile Expressions](#custom-compile-expressions)
 - [What To Remember](#what-to-remember)
-- [Potential Additions](#potential-additions)
 
 ## What You Get
 
@@ -262,6 +262,42 @@ This produces a standard `INNER JOIN`. If you need a different join type, use:
 - `cross_join()`
 - `semi_join()`
 - `anti_join()`
+
+### Subquery Example
+
+Subqueries work both as a source table and inside conditions.
+
+```python
+orders = Table("orders")
+users = Table("users")
+
+paid_order_user_ids = (
+    select(orders.user_id)
+    .from_(orders)
+    .where_by(status="paid")
+)
+
+query, params = (
+    select(users.id, users.name)
+    .from_(users)
+    .where(users.id.in_(paid_order_user_ids))
+    .compile()
+)
+```
+
+The same idea also works in `FROM`:
+
+```python
+orders = Table("orders")
+
+paid_orders = (
+    select(orders.user_id, orders.total)
+    .from_(orders)
+    .where_by(status="paid")
+)
+
+query, params = select().from_(paid_orders).compile()
+```
 
 ### Having Example
 
