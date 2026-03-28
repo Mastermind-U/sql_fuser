@@ -9,7 +9,7 @@ def test_distinct_all_columns() -> None:
     users = Table("users")
     q = select().from_(users).distinct()
     sql, params = q.build_query()
-    assert sql == 'SELECT DISTINCT * FROM "users" AS "a"'
+    assert sql == ('SELECT DISTINCT * FROM "users" AS "a"')
     assert params == ()
 
 
@@ -18,7 +18,7 @@ def test_distinct_single_column() -> None:
     users = Table("users")
     q = select(users.category).from_(users).distinct()
     sql, params = q.build_query()
-    assert sql == 'SELECT DISTINCT "a"."category" FROM "users" AS "a"'
+    assert sql == ('SELECT DISTINCT "a"."category" FROM "users" AS "a"')
     assert params == ()
 
 
@@ -27,7 +27,9 @@ def test_distinct_multiple_columns() -> None:
     users = Table("users")
     q = select(users.name, users.email).from_(users).distinct()
     sql, params = q.build_query()
-    assert sql == 'SELECT DISTINCT "a"."name", "a"."email" FROM "users" AS "a"'
+    assert sql == (
+        'SELECT DISTINCT "a"."name", "a"."email" FROM "users" AS "a"'
+    )
     assert params == ()
 
 
@@ -40,9 +42,9 @@ def test_distinct_three_columns() -> None:
         .distinct()
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."first_name", "a"."last_name", "a"."email" FROM "users" AS "a"'
+    assert sql == (
+        'SELECT DISTINCT "a"."first_name", "a"."last_name", "a"."email" '
+        'FROM "users" AS "a"'
     )
     assert params == ()
 
@@ -58,9 +60,10 @@ def test_distinct_with_inner_join() -> None:
         .distinct()
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."name" FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id"'
+    assert sql == (
+        'SELECT DISTINCT "a"."name" '
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id"'
     )
     assert params == ()
 
@@ -76,9 +79,10 @@ def test_distinct_with_left_join() -> None:
         .distinct()
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."name", "b"."total" FROM "users" AS "a" LEFT JOIN "orders" AS "b" ON "a"."id" = "b"."user_id"'
+    assert sql == (
+        'SELECT DISTINCT "a"."name", "b"."total" '
+        'FROM "users" AS "a" '
+        'LEFT JOIN "orders" AS "b" ON "a"."id" = "b"."user_id"'
     )
     assert params == ()
 
@@ -96,9 +100,11 @@ def test_distinct_with_multiple_joins() -> None:
         .distinct()
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."name" FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" INNER JOIN "items" AS "c" ON "b"."id" = "c"."order_id"'
+    assert sql == (
+        'SELECT DISTINCT "a"."name" '
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" '
+        'INNER JOIN "items" AS "c" ON "b"."id" = "c"."order_id"'
     )
     assert params == ()
 
@@ -109,9 +115,10 @@ def test_distinct_with_cross_join() -> None:
     table_b = Table("table_b")
     q = select(table_a.id).from_(table_a).cross_join(table_b).distinct()
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."id" FROM "table_a" AS "a" CROSS JOIN "table_b" AS "b"'
+    assert sql == (
+        'SELECT DISTINCT "a"."id" '
+        'FROM "table_a" AS "a" '
+        'CROSS JOIN "table_b" AS "b"'
     )
     assert params == ()
 
@@ -121,7 +128,7 @@ def test_distinct_with_limit() -> None:
     users = Table("users")
     q = select(users.city).from_(users).distinct().limit(5)
     sql, params = q.build_query()
-    assert sql == 'SELECT DISTINCT "a"."city" FROM "users" AS "a" LIMIT 5'
+    assert sql == ('SELECT DISTINCT "a"."city" FROM "users" AS "a" LIMIT 5')
     assert params == ()
 
 
@@ -130,7 +137,9 @@ def test_distinct_with_offset() -> None:
     users = Table("users")
     q = select(users.country).from_(users).distinct().offset(10)
     sql, params = q.build_query()
-    assert sql == 'SELECT DISTINCT "a"."country" FROM "users" AS "a" OFFSET 10'
+    assert sql == (
+        'SELECT DISTINCT "a"."country" FROM "users" AS "a" OFFSET 10'
+    )
     assert params == ()
 
 
@@ -139,9 +148,8 @@ def test_distinct_with_limit_and_offset() -> None:
     users = Table("users")
     q = select(users.category).from_(users).distinct().limit(10).offset(5)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."category" FROM "users" AS "a" LIMIT 10 OFFSET 5'
+    assert sql == (
+        'SELECT DISTINCT "a"."category" FROM "users" AS "a" LIMIT 10 OFFSET 5'
     )
     assert params == ()
 
@@ -151,9 +159,8 @@ def test_distinct_with_offset_then_limit() -> None:
     users = Table("users")
     q = select(users.status).from_(users).distinct().offset(20).limit(15)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."status" FROM "users" AS "a" LIMIT 15 OFFSET 20'
+    assert sql == (
+        'SELECT DISTINCT "a"."status" FROM "users" AS "a" LIMIT 15 OFFSET 20'
     )
     assert params == ()
 
@@ -163,9 +170,10 @@ def test_distinct_with_group_by() -> None:
     users = Table("users")
     q = select(users.category).from_(users).group_by(users.category).distinct()
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."category" FROM "users" AS "a" GROUP BY "a"."category"'
+    assert sql == (
+        'SELECT DISTINCT "a"."category" '
+        'FROM "users" AS "a" '
+        'GROUP BY "a"."category"'
     )
     assert params == ()
 
@@ -180,9 +188,10 @@ def test_distinct_with_group_by_rollup() -> None:
         .distinct()
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."region" FROM "users" AS "a" GROUP BY ROLLUP ("a"."region")'
+    assert sql == (
+        'SELECT DISTINCT "a"."region" '
+        'FROM "users" AS "a" '
+        'GROUP BY ROLLUP ("a"."region")'
     )
     assert params == ()
 
@@ -199,9 +208,11 @@ def test_distinct_with_group_by_and_having() -> None:
         .distinct()
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."category" FROM "users" AS "a" GROUP BY "a"."category" HAVING "a"."id" > ?'
+    assert sql == (
+        'SELECT DISTINCT "a"."category" '
+        'FROM "users" AS "a" '
+        'GROUP BY "a"."category" '
+        'HAVING "a"."id" > ?'
     )
     assert params == (5,)
 
@@ -218,9 +229,11 @@ def test_distinct_with_join_and_limit() -> None:
         .limit(10)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."name" FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" LIMIT 10'
+    assert sql == (
+        'SELECT DISTINCT "a"."name" '
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" '
+        "LIMIT 10"
     )
     assert params == ()
 
@@ -240,9 +253,13 @@ def test_distinct_with_multiple_joins_and_limit_offset() -> None:
         .offset(10)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."name", "c"."product_id" FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" INNER JOIN "items" AS "c" ON "b"."id" = "c"."order_id" LIMIT 20 OFFSET 10'
+    assert sql == (
+        'SELECT DISTINCT "a"."name", "c"."product_id" '
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" '
+        'INNER JOIN "items" AS "c" ON "b"."id" = "c"."order_id" '
+        "LIMIT 20 "
+        "OFFSET 10"
     )
     assert params == ()
 
@@ -258,9 +275,10 @@ def test_distinct_with_semi_join() -> None:
         .distinct()
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."city" FROM "city_airport" AS "a" SEMI JOIN "airport_names" AS "b" ON "a"."iata" = "b"."iata"'
+    assert sql == (
+        'SELECT DISTINCT "a"."city" '
+        'FROM "city_airport" AS "a" '
+        'SEMI JOIN "airport_names" AS "b" ON "a"."iata" = "b"."iata"'
     )
     assert params == ()
 
@@ -276,9 +294,10 @@ def test_distinct_with_anti_join() -> None:
         .distinct()
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT "a"."city" FROM "city_airport" AS "a" ANTI JOIN "airport_names" AS "b" ON "a"."iata" = "b"."iata"'
+    assert sql == (
+        'SELECT DISTINCT "a"."city" '
+        'FROM "city_airport" AS "a" '
+        'ANTI JOIN "airport_names" AS "b" ON "a"."iata" = "b"."iata"'
     )
     assert params == ()
 
@@ -337,9 +356,10 @@ def test_distinct_with_star_and_join() -> None:
         .distinct()
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT DISTINCT * FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id"'
+    assert sql == (
+        "SELECT DISTINCT * "
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id"'
     )
     assert params == ()
 

@@ -21,7 +21,7 @@ def test_func_sum_single_column() -> None:
     users = Table("users")
     q = select(func.sum(users.age)).from_(users)
     sql, params = q.build_query()
-    assert sql == 'SELECT SUM("a"."age") FROM "users" AS "a"'
+    assert sql == ('SELECT SUM("a"."age") FROM "users" AS "a"')
     assert params == ()
 
 
@@ -30,7 +30,7 @@ def test_func_count_all() -> None:
     users = Table("users")
     q = select(func.count("*")).from_(users)
     sql, params = q.build_query()
-    assert sql == 'SELECT COUNT(*) FROM "users" AS "a"'
+    assert sql == ('SELECT COUNT(*) FROM "users" AS "a"')
     assert params == ()
 
 
@@ -39,7 +39,7 @@ def test_func_count_column() -> None:
     users = Table("users")
     q = select(func.count(users.id)).from_(users)
     sql, params = q.build_query()
-    assert sql == 'SELECT COUNT("a"."id") FROM "users" AS "a"'
+    assert sql == ('SELECT COUNT("a"."id") FROM "users" AS "a"')
     assert params == ()
 
 
@@ -48,7 +48,7 @@ def test_func_max() -> None:
     orders = Table("orders")
     q = select(func.max(orders.total)).from_(orders)
     sql, params = q.build_query()
-    assert sql == 'SELECT MAX("a"."total") FROM "orders" AS "a"'
+    assert sql == ('SELECT MAX("a"."total") FROM "orders" AS "a"')
     assert params == ()
 
 
@@ -57,7 +57,7 @@ def test_func_min() -> None:
     orders = Table("orders")
     q = select(func.min(orders.total)).from_(orders)
     sql, params = q.build_query()
-    assert sql == 'SELECT MIN("a"."total") FROM "orders" AS "a"'
+    assert sql == ('SELECT MIN("a"."total") FROM "orders" AS "a"')
     assert params == ()
 
 
@@ -66,7 +66,7 @@ def test_func_avg() -> None:
     orders = Table("orders")
     q = select(func.avg(orders.total)).from_(orders)
     sql, params = q.build_query()
-    assert sql == 'SELECT AVG("a"."total") FROM "orders" AS "a"'
+    assert sql == ('SELECT AVG("a"."total") FROM "orders" AS "a"')
     assert params == ()
 
 
@@ -79,9 +79,9 @@ def test_multiple_aggregate_functions() -> None:
         func.avg(orders.total),
     ).from_(orders)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT COUNT("a"."id"), SUM("a"."total"), AVG("a"."total") FROM "orders" AS "a"'
+    assert sql == (
+        'SELECT COUNT("a"."id"), SUM("a"."total"), AVG("a"."total") '
+        'FROM "orders" AS "a"'
     )
     assert params == ()
 
@@ -91,9 +91,8 @@ def test_aggregate_with_regular_column() -> None:
     orders = Table("orders")
     q = select(orders.customer_id, func.sum(orders.total)).from_(orders)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."customer_id", SUM("a"."total") FROM "orders" AS "a"'
+    assert sql == (
+        'SELECT "a"."customer_id", SUM("a"."total") FROM "orders" AS "a"'
     )
     assert params == ()
 
@@ -107,9 +106,10 @@ def test_aggregate_with_group_by() -> None:
         .group_by(orders.customer_id)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."customer_id", SUM("a"."total") FROM "orders" AS "a" GROUP BY "a"."customer_id"'
+    assert sql == (
+        'SELECT "a"."customer_id", SUM("a"."total") '
+        'FROM "orders" AS "a" '
+        'GROUP BY "a"."customer_id"'
     )
     assert params == ()
 
@@ -128,9 +128,11 @@ def test_aggregate_with_group_by_multiple_cols() -> None:
         .group_by(orders.customer_id, orders.status)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."customer_id", "a"."status", COUNT("a"."id"), SUM("a"."total") FROM "orders" AS "a" GROUP BY "a"."customer_id", "a"."status"'
+    assert sql == (
+        'SELECT "a"."customer_id", "a"."status", '
+        'COUNT("a"."id"), SUM("a"."total") '
+        'FROM "orders" AS "a" '
+        'GROUP BY "a"."customer_id", "a"."status"'
     )
     assert params == ()
 
@@ -146,9 +148,11 @@ def test_aggregate_with_having() -> None:
         .having(func.count(orders.id) > orders_num)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."customer_id", COUNT("a"."id") FROM "orders" AS "a" GROUP BY "a"."customer_id" HAVING COUNT("a"."id") > ?'
+    assert sql == (
+        'SELECT "a"."customer_id", COUNT("a"."id") '
+        'FROM "orders" AS "a" '
+        'GROUP BY "a"."customer_id" '
+        'HAVING COUNT("a"."id") > ?'
     )
     assert params == (5,)
 
@@ -158,7 +162,7 @@ def test_custom_function() -> None:
     users = Table("users")
     q = select(func.my_custom_func(users.name)).from_(users)
     sql, params = q.build_query()
-    assert sql == 'SELECT MY_CUSTOM_FUNC("a"."name") FROM "users" AS "a"'
+    assert sql == ('SELECT MY_CUSTOM_FUNC("a"."name") FROM "users" AS "a"')
     assert params == ()
 
 
@@ -167,9 +171,8 @@ def test_custom_function_multiple_args() -> None:
     users = Table("users")
     q = select(func.concat(users.first_name, users.last_name)).from_(users)
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT CONCAT("a"."first_name", "a"."last_name") FROM "users" AS "a"'
+    assert sql == (
+        'SELECT CONCAT("a"."first_name", "a"."last_name") FROM "users" AS "a"'
     )
     assert params == ()
 
@@ -179,7 +182,7 @@ def test_custom_function_with_literals() -> None:
     users = Table("users")
     q = select(func.coalesce(users.email, "no-email@example.com")).from_(users)
     sql, params = q.build_query()
-    assert sql == 'SELECT COALESCE("a"."email", ?) FROM "users" AS "a"'
+    assert sql == ('SELECT COALESCE("a"."email", ?) FROM "users" AS "a"')
     assert params == ("no-email@example.com",)
 
 
@@ -188,7 +191,7 @@ def test_custom_function_with_numeric_literal() -> None:
     orders = Table("orders")
     q = select(func.round(orders.total, 2)).from_(orders)
     sql, params = q.build_query()
-    assert sql == 'SELECT ROUND("a"."total", ?) FROM "orders" AS "a"'
+    assert sql == ('SELECT ROUND("a"."total", ?) FROM "orders" AS "a"')
     assert params == (2,)
 
 
@@ -201,9 +204,8 @@ def test_aggregate_with_where() -> None:
         .where_by(status="completed")
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT SUM("a"."total") FROM "orders" AS "a" WHERE "a"."status" = ?'
+    assert sql == (
+        'SELECT SUM("a"."total") FROM "orders" AS "a" WHERE "a"."status" = ?'
     )
     assert params == ("completed",)
 
@@ -218,9 +220,11 @@ def test_aggregate_with_where_and_group_by() -> None:
         .group_by(orders.customer_id)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."customer_id", SUM("a"."total") FROM "orders" AS "a" WHERE "a"."status" = ? GROUP BY "a"."customer_id"'
+    assert sql == (
+        'SELECT "a"."customer_id", SUM("a"."total") '
+        'FROM "orders" AS "a" '
+        'WHERE "a"."status" = ? '
+        'GROUP BY "a"."customer_id"'
     )
     assert params == ("completed",)
 
@@ -235,9 +239,10 @@ def test_aggregate_with_join() -> None:
         .join(items, orders.id == items.order_id)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."id", COUNT("b"."id") FROM "orders" AS "a" INNER JOIN "items" AS "b" ON "a"."id" = "b"."order_id"'
+    assert sql == (
+        'SELECT "a"."id", COUNT("b"."id") '
+        'FROM "orders" AS "a" '
+        'INNER JOIN "items" AS "b" ON "a"."id" = "b"."order_id"'
     )
     assert params == ()
 
@@ -254,9 +259,11 @@ def test_aggregate_with_multiple_joins() -> None:
         .join(items, orders.id == items.order_id)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."name", SUM("c"."price") FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" INNER JOIN "items" AS "c" ON "b"."id" = "c"."order_id"'
+    assert sql == (
+        'SELECT "a"."name", SUM("c"."price") '
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" '
+        'INNER JOIN "items" AS "c" ON "b"."id" = "c"."order_id"'
     )
     assert params == ()
 
@@ -275,9 +282,13 @@ def test_complex_aggregate_query() -> None:
         .having(func.count(orders.id) >= orders_num)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."name", COUNT("b"."id"), SUM("b"."total") FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" WHERE "a"."status" = ? GROUP BY "a"."name" HAVING COUNT("b"."id") >= ?'
+    assert sql == (
+        'SELECT "a"."name", COUNT("b"."id"), SUM("b"."total") '
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" '
+        'WHERE "a"."status" = ? '
+        'GROUP BY "a"."name" '
+        'HAVING COUNT("b"."id") >= ?'
     )
     assert params == ("active", 3)
 
@@ -294,9 +305,12 @@ def test_aggregate_with_limit() -> None:
         .limit(10)
     )
     sql, params = q.build_query()
-    assert (
-        sql
-        == 'SELECT "a"."id", COUNT("b"."id") FROM "users" AS "a" INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" GROUP BY "a"."id" LIMIT 10'
+    assert sql == (
+        'SELECT "a"."id", COUNT("b"."id") '
+        'FROM "users" AS "a" '
+        'INNER JOIN "orders" AS "b" ON "a"."id" = "b"."user_id" '
+        'GROUP BY "a"."id" '
+        "LIMIT 10"
     )
     assert params == ()
 
@@ -306,7 +320,7 @@ def test_aggregate_with_distinct() -> None:
     orders = Table("orders")
     q = select(func.count(orders.id)).from_(orders).distinct()
     sql, params = q.build_query()
-    assert sql == 'SELECT DISTINCT COUNT("a"."id") FROM "orders" AS "a"'
+    assert sql == ('SELECT DISTINCT COUNT("a"."id") FROM "orders" AS "a"')
     assert params == ()
 
 
@@ -315,7 +329,7 @@ def test_nested_function_calls() -> None:
     users = Table("users")
     q = select(func.upper(func.trim(users.name))).from_(users)
     sql, params = q.build_query()
-    assert sql == 'SELECT UPPER(TRIM("a"."name")) FROM "users" AS "a"'
+    assert sql == ('SELECT UPPER(TRIM("a"."name")) FROM "users" AS "a"')
     assert params == ()
 
 
@@ -365,7 +379,7 @@ def test_function_with_no_args() -> None:
     users = Table("users")
     q = select(func.now()).from_(users)
     sql, params = q.build_query()
-    assert sql == 'SELECT NOW() FROM "users" AS "a"'
+    assert sql == ('SELECT NOW() FROM "users" AS "a"')
     assert params == ()
 
 
@@ -374,7 +388,7 @@ def test_function_with_only_literals() -> None:
     users = Table("users")
     q = select(func.concat("Hello", "World")).from_(users)
     sql, params = q.build_query()
-    assert sql == 'SELECT CONCAT(?, ?) FROM "users" AS "a"'
+    assert sql == ('SELECT CONCAT(?, ?) FROM "users" AS "a"')
     assert params == ("Hello", "World")
 
 
