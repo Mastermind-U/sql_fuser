@@ -107,17 +107,39 @@ Expected style of generated SQL:
 SELECT "a"."id", "a"."name" FROM "users" AS "a" WHERE "a"."status" = ?
 ```
 
-## Quickstart: DuckDB and psycopg3
+## Quickstart: DuckDB
 
-DuckDB also accepts `?` placeholders directly.
+DuckDB works with the default `?` placeholders directly, so you can execute
+queries without any SQL rewriting.
 
-For psycopg3, you usually want `%s` placeholders instead. The cleanest way is
-to add a small compile expression that rewrites the final SQL string.
+```python
+import duckdb
+from sql_fusion import Table, select
+
+
+users = Table("users")
+
+query = (
+    select(users.id, users.name)
+    .from_(users)
+    .where(users.status == "active")
+)
+
+duck_sql, duck_params = query.compile()
+duck_conn = duckdb.connect(":memory:")
+duck_conn.execute("CREATE TABLE users (id INTEGER, name TEXT, status TEXT)")
+duck_conn.execute(duck_sql, duck_params).fetchall()
+```
+
+## Quickstart: psycopg3
+
+psycopg3 usually expects `%s` placeholders instead of `?`. The simplest way
+to support it is to add a compile expression that rewrites placeholders at the
+very end.
 
 ```python
 from typing import Any
 
-import duckdb
 import psycopg
 
 from sql_fusion import Table, select
@@ -135,13 +157,6 @@ query = (
     .where(users.status == "active")
 )
 
-# DuckDB
-duck_sql, duck_params = query.compile()
-duck_conn = duckdb.connect(":memory:")
-duck_conn.execute("CREATE TABLE users (id INTEGER, name TEXT, status TEXT)")
-duck_conn.execute(duck_sql, duck_params).fetchall()
-
-# psycopg3
 pg_sql, pg_params = query.compile_expression(to_psycopg3).compile()
 pg_conn = psycopg.connect("dbname=example user=example password=example")
 pg_conn.execute(pg_sql, pg_params).fetchall()
@@ -208,6 +223,49 @@ query = (
     )
 )
 ```
+
+### Join Example
+
+```python
+users = Table("users")
+orders = Table("orders")
+
+query = (
+    select(users.id, users.name, orders.total)
+    .from_(users)
+    .join(orders, users.id == orders.user_id)
+    .where_by(status="active")
+)
+```
+
+This produces a standard `INNER JOIN`. If you need a different join type, use:
+
+- `left_join()`
+- `right_join()`
+- `full_join()`
+- `cross_join()`
+- `semi_join()`
+- `anti_join()`
+
+### Having Example
+
+```python
+orders = Table("orders")
+
+query = (
+    select(
+        orders.status,
+        func.count(orders.id),
+        func.sum(orders.total),
+    )
+    .from_(orders)
+    .group_by(orders.status)
+    .having(func.count(orders.id) >= 3)
+)
+```
+
+`HAVING` works after grouping and is ideal for filtering aggregates, for
+example "only statuses with at least 3 orders".
 
 ## Method Reference
 
