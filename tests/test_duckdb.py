@@ -184,6 +184,100 @@ def test_complex_user_filter(duckdb_db: Any) -> None:
     assert sorted(rows) == [(1, "Alice"), (5, "Erin")]
 
 
+def test_like_filter(duckdb_db: Any) -> None:
+    users = Table("users")
+    query, params = (
+        select(users.name)
+        .from_(users)
+        .where(users.name.like("A%"))
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert rows == [("Alice",)]
+
+
+def test_ilike_filter(duckdb_db: Any) -> None:
+    users = Table("users")
+    query, params = (
+        select(users.name)
+        .from_(users)
+        .where(users.name.ilike("a%"))
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert rows == [("Alice",)]
+
+
+def test_ilike_suffix_filter(duckdb_db: Any) -> None:
+    users = Table("users")
+    query, params = (
+        select(users.email)
+        .from_(users)
+        .where(users.email.ilike("%@foo.com"))
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert rows == [("erin@foo.com",)]
+
+
+def test_ilike_contains_filter(duckdb_db: Any) -> None:
+    users = Table("users")
+    query, params = (
+        select(users.email)
+        .from_(users)
+        .where(users.email.ilike("%example%"))
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert _sorted_rows(rows) == [
+        ("alice@example.com",),
+        ("bob@example.com",),
+        ("carol@example.com",),
+        ("dave@example.com",),
+    ]
+
+
+def test_in_filter(duckdb_db: Any) -> None:
+    users = Table("users")
+    query, params = (
+        select(users.name)
+        .from_(users)
+        .where(users.country.in_(["US", "CA"]))
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert _sorted_rows(rows) == [
+        ("Alice",),
+        ("Bob",),
+        ("Carol",),
+        ("Erin",),
+    ]
+
+
+def test_not_in_filter(duckdb_db: Any) -> None:
+    users = Table("users")
+    query, params = (
+        select(users.name)
+        .from_(users)
+        .where(users.country.not_in(["US", "CA"]))
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert rows == [("Dave",)]
+
+
 def test_complex_join_filter(duckdb_db: Any) -> None:
     users = Table("users")
     orders = Table("orders")
