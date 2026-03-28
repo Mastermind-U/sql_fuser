@@ -59,7 +59,7 @@ pip install -e .
 ## Public API
 
 ```python
-from sql_fusion import Table, delete, func, insert, select, update
+from sql_fusion import Alias, Table, delete, func, insert, select, update
 ```
 
 ### Core Objects
@@ -70,6 +70,8 @@ from sql_fusion import Table, delete, func, insert, select, update
 - `update` creates an `UPDATE` builder.
 - `delete` creates a `DELETE` builder.
 - `func` is a dynamic SQL function registry.
+- `Alias` represents a reusable SQL alias for aggregate expressions and
+  `HAVING` conditions.
 
 ## Quickstart: SQLite3
 
@@ -303,21 +305,25 @@ query, params = select().from_(paid_orders).compile()
 
 ```python
 orders = Table("orders")
+count_orders = Alias("count_orders")
 
 query = (
     select(
         orders.status,
-        func.count(orders.id),
+        func.count(orders.id).as_(count_orders),
         func.sum(orders.total),
     )
     .from_(orders)
     .group_by(orders.status)
-    .having(func.count(orders.id) >= 3)
+    .having(count_orders >= 3)
 )
 ```
 
 `HAVING` works after grouping and is ideal for filtering aggregates, for
 example "only statuses with at least 3 orders".
+
+Because `as` is a reserved Python keyword, the method is exposed as
+`as_()`.
 
 ## Method Reference
 
@@ -430,12 +436,14 @@ query = delete().from_(users).where(users.id == 1)
 `func` is a dynamic SQL function registry. It converts attribute access into an uppercased SQL function name.
 
 ```python
-from sql_fusion import Table, func, select
+from sql_fusion import Alias, Table, func, select
 
 orders = Table("orders")
+count_orders = Alias("count_orders")
 
 query = select(
     func.count("*"),
+    func.count(orders.id).as_(count_orders),
     func.sum(orders.total),
     func.coalesce(orders.status, "unknown"),
 ).from_(orders)
@@ -447,6 +455,7 @@ Examples:
 - `func.sum(table.total)` -> `SUM("a"."total")`
 - `func.my_custom_func(table.name)` -> `MY_CUSTOM_FUNC("a"."name")`
 - nested calls are supported, for example `func.round(func.avg(...), 2)`
+- `func.count(table.id).as_(Alias("count_orders"))` -> `COUNT("a"."id") AS "count_orders"`
 
 String and numeric literals are parameterized automatically.
 

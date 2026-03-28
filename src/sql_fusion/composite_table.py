@@ -12,14 +12,14 @@ class QueryLike(Protocol):
 class Condition:
     def __init__(  # noqa: PLR0913
         self,
-        column: Column | FunctionCall | None = None,
+        column: Column | Alias | FunctionCall | None = None,
         operator: str = "",
         value: object | None = None,
         is_and: bool = True,
         left: Condition | None = None,
         right: Condition | None = None,
     ) -> None:
-        self.column: Column | FunctionCall | None = column
+        self.column: Column | Alias | FunctionCall | None = column
         self.operator: str = operator
         self.value: object | None = value
         self.is_and: bool = is_and
@@ -49,72 +49,94 @@ class Condition:
                 left_params + right_params,
             )
 
-        if self.column:
-            # Handle FunctionCall objects
-
-            if isinstance(self.column, FunctionCall):
-                func_sql, func_params = self.column.to_sql()
-                params: list[Any] = list(func_params)
-
-                # Handle value - could be Column or literal
-                if isinstance(self.value, Column):
-                    value_ref: str = (
-                        f'"{self.value.table_alias}"."{self.value.name}"'
-                    )
-                    return (
-                        f"{func_sql} {self.operator} {value_ref}",
-                        tuple(params),
-                    )
-                if isinstance(self.value, FunctionCall):
-                    value_sql, value_params = self.value.to_sql()
-                    params.extend(value_params)
-                    return f"{func_sql} {self.operator} {value_sql}", tuple(
-                        params,
-                    )
-                if _is_query_like(self.value):
-                    subquery_sql, subquery_params = self.value.build_query()
-                    params.extend(subquery_params)
-                    return (
-                        f"{func_sql} {self.operator} ({subquery_sql})",
-                        tuple(params),
-                    )
-                # Literal value
-                params.append(self.value)
-                return f"{func_sql} {self.operator} ?", tuple(params)
-
-            # Handle regular Column objects
-            col_ref: str = f'"{self.column.table_alias}"."{self.column.name}"'
-
-            # Handle JOIN conditions where value is a Column
-            if isinstance(self.value, Column):
-                return self.value.ref_to_sql(col_ref, self.operator), tuple()
-
-            if _is_query_like(self.value):
-                subquery_sql, subquery_params = self.value.build_query()
-                return (
-                    f"{col_ref} {self.operator} ({subquery_sql})",
-                    subquery_params,
-                )
-
-            if self.operator in {"IN", "NOT IN"}:
-                if _is_value_sequence(self.value):
-                    values: tuple[Any, ...] = tuple(self.value)
-                else:
-                    values = (self.value,)
-
-                placeholders: str = ", ".join("?" * len(values))
-                return (
-                    f"{col_ref} {self.operator} ({placeholders})",
-                    values,
-                )
-
-            if self.operator in OPERATORS:
-                operator_class = OPERATORS[self.operator]
-                return operator_class(col_ref).to_sql(self.value)
-
+        if not self.column:
             return "", tuple()
 
+        if isinstance(self.column, FunctionCall):
+            func_sql, func_params = self.column.to_sql()
+            params: list[Any] = list(func_params)
+
+            value_sql, value_params = _render_condition_value(self.value)
+            if value_sql is not None:
+                params.extend(value_params)
+                return (
+                    f"{func_sql} {self.operator} {value_sql}",
+                    tuple(params),
+                )
+
+            params.append(self.value)
+            return f"{func_sql} {self.operator} ?", tuple(params)
+
+        col_ref: str = self.column.get_ref()
+
+        if isinstance(self.value, (Column, Alias)):
+            return _render_column_comparison(
+                col_ref,
+                self.operator,
+                self.value.get_ref(),
+            )
+
+        if _is_query_like(self.value):
+            subquery_sql, subquery_params = self.value.build_query()
+            return (
+                f"{col_ref} {self.operator} ({subquery_sql})",
+                subquery_params,
+            )
+
+        if self.operator in {"IN", "NOT IN"}:
+            if _is_value_sequence(self.value):
+                values: tuple[Any, ...] = tuple(self.value)
+            else:
+                values = (self.value,)
+
+            placeholders: str = ", ".join("?" * len(values))
+            return (
+                f"{col_ref} {self.operator} ({placeholders})",
+                values,
+            )
+
+        if self.operator in OPERATORS:
+            operator_class = OPERATORS[self.operator]
+            return operator_class(col_ref).to_sql(self.value)
+
         return "", tuple()
+
+
+class Alias:
+    """Represents a named SQL alias."""
+
+    def __init__(self, name: str) -> None:
+        self.name: str = name
+
+    def get_ref(self) -> str:
+        return f'"{self.name}"'
+
+    def to_sql(self) -> str:
+        return self.get_ref()
+
+    def __eq__(self, other: object) -> Condition:  # type: ignore[override]
+        return Condition(column=self, operator="=", value=other)
+
+    def __ne__(self, other: object) -> Condition:  # type: ignore[override]
+        return Condition(column=self, operator="!=", value=other)
+
+    def __lt__(self, other: Any) -> Condition:
+        return Condition(column=self, operator="<", value=other)
+
+    def __gt__(self, other: Any) -> Condition:
+        return Condition(column=self, operator=">", value=other)
+
+    def __le__(self, other: Any) -> Condition:
+        return Condition(column=self, operator="<=", value=other)
+
+    def __ge__(self, other: Any) -> Condition:
+        return Condition(column=self, operator=">=", value=other)
+
+    def __hash__(self) -> int:
+        raise TypeError(f"unhashable type: '{type(self).__name__}'")
+
+    def __repr__(self) -> str:
+        return f"Alias({self.name!r})"
 
 
 class FunctionCall:
@@ -130,8 +152,19 @@ class FunctionCall:
         """
         self.name: str = name
         self.args: tuple[Any, ...] = args
+        self._alias: Alias | None = None
 
-    def to_sql(self) -> tuple[str, tuple[Any, ...]]:
+    def as_(self, alias: Alias | str) -> FunctionCall:
+        """Attach a named alias to the function call."""
+        result = copy(self)
+        result._alias = alias if isinstance(alias, Alias) else Alias(alias)
+        return result
+
+    def to_sql(
+        self,
+        *,
+        include_alias: bool = False,
+    ) -> tuple[str, tuple[Any, ...]]:
         """Convert function call to SQL and extract parameters.
 
         Returns:
@@ -167,7 +200,10 @@ class FunctionCall:
                 params.append(arg)
 
         args_sql = ", ".join(sql_args)
-        return f"{self.name}({args_sql})", tuple(params)
+        sql = f"{self.name}({args_sql})"
+        if include_alias and self._alias is not None:
+            sql = f"{sql} AS {self._alias.get_ref()}"
+        return sql, tuple(params)
 
     def __eq__(self, other: object) -> Any:
         return Condition(column=self, operator="=", value=other)
@@ -189,7 +225,9 @@ class FunctionCall:
 
     def __repr__(self) -> str:
         args_repr = ", ".join(repr(arg) for arg in self.args)
-        return f"FunctionCall({self.name}({args_repr}))"
+        if self._alias is None:
+            return f"FunctionCall({self.name}({args_repr}))"
+        return f"FunctionCall({self.name}({args_repr}) AS {self._alias!r})"
 
     def __hash__(self) -> int:
         raise TypeError(f"unhashable type: '{type(self).__name__}'")
@@ -343,3 +381,41 @@ def _is_query_like(value: object | None) -> TypeGuard[QueryLike]:
 
 def _is_value_sequence(value: object | None) -> TypeGuard[Sequence[Any]]:
     return isinstance(value, (list, tuple))
+
+
+def _render_condition_value(
+    value: object | None,
+) -> tuple[str | None, tuple[Any, ...]]:
+    if isinstance(value, (Column, Alias)):
+        return value.get_ref(), tuple()
+
+    if isinstance(value, FunctionCall):
+        value_sql, value_params = value.to_sql()
+        return value_sql, value_params
+
+    if _is_query_like(value):
+        subquery_sql, subquery_params = value.build_query()
+        return f"({subquery_sql})", subquery_params
+
+    return None, tuple()
+
+
+def _render_column_comparison(
+    column_ref: str,
+    operator: str,
+    value_ref: str,
+) -> tuple[str, tuple[Any, ...]]:
+    if operator == "=":
+        return f"{column_ref} = {value_ref}", tuple()
+    if operator == "!=":
+        return f"{column_ref} != {value_ref}", tuple()
+    if operator == "<":
+        return f"{column_ref} < {value_ref}", tuple()
+    if operator == ">":
+        return f"{column_ref} > {value_ref}", tuple()
+    if operator == "<=":
+        return f"{column_ref} <= {value_ref}", tuple()
+    if operator == ">=":
+        return f"{column_ref} >= {value_ref}", tuple()
+
+    return "", tuple()

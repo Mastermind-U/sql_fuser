@@ -3,6 +3,7 @@ from copy import copy
 from typing import Any, Self
 
 from sql_fusion.composite_table import (
+    Alias,
     Column,
     Condition,
     FunctionCall,
@@ -20,10 +21,10 @@ class AbstractQuery:
     def __init__(
         self,
         table: Table | None,
-        columns: tuple[Column | FunctionCall, ...] = (),
+        columns: tuple[Column | Alias | FunctionCall, ...] = (),
     ) -> None:
         self._table: Table | None = table
-        self._columns: tuple[Column | FunctionCall, ...] = columns
+        self._columns: tuple[Column | Alias | FunctionCall, ...] = columns
         self._where_condition: Condition | None = None
         self._ctes: list[tuple[str, QueryLike]] = []
         self._with_recursive: bool = False

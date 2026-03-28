@@ -1,12 +1,18 @@
 from copy import copy
 from typing import Any, Self
 
-from sql_fusion.composite_table import Column, Condition, FunctionCall, Table
+from sql_fusion.composite_table import (
+    Alias,
+    Column,
+    Condition,
+    FunctionCall,
+    Table,
+)
 from sql_fusion.query.abstract_query import AbstractQuery
 
 
 class select(AbstractQuery):
-    def __init__(self, *columns: Column | FunctionCall) -> None:
+    def __init__(self, *columns: Column | Alias | FunctionCall) -> None:
         super().__init__(table=None, columns=columns)
         self._having_condition: Condition | None = None
         self._group_by_columns: tuple[Column, ...] = ()
@@ -33,9 +39,11 @@ class select(AbstractQuery):
             for col in self._columns:
                 if isinstance(col, FunctionCall):
                     # Handle function calls
-                    func_sql, func_params = col.to_sql()
+                    func_sql, func_params = col.to_sql(include_alias=True)
                     col_parts.append(func_sql)
                     params.extend(func_params)
+                elif isinstance(col, Alias):
+                    col_parts.append(col.to_sql())
                 else:
                     # Handle regular columns
                     col_parts.append(f'"{col.table_alias}"."{col.name}"')

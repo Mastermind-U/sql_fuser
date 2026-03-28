@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from sql_fusion import Table, delete, insert, select, update
+from sql_fusion import Alias, Table, delete, func, insert, select, update
 
 MIN_USER_AGE = 30
 MIN_JOIN_TOTAL = 100
@@ -245,3 +245,53 @@ def test_delete_user_row(sqlite_db: sqlite3.Connection) -> None:
     )
 
     assert rows == [(0,)]
+
+
+def test_grouped_aggregate_query_with_alias_having(
+    sqlite_db: sqlite3.Connection,
+) -> None:
+    """Test aliasing an aggregate and reusing it in HAVING."""
+    orders = Table("orders")
+    count_orders = Alias("count_orders")
+
+    orders_ge = 3
+
+    query, params = (
+        select(
+            orders.status,
+            func.count(orders.id).as_(count_orders),
+            func.sum(orders.total),
+        )
+        .from_(orders)
+        .group_by(orders.status)
+        .having(count_orders >= orders_ge)
+        .compile()
+    )
+
+    rows = _fetch_rows(sqlite_db, query, params)
+
+    assert rows == [("completed", 4, 640)]
+
+
+def test_grouped_aggregate_query_without_alias_having(
+    sqlite_db: sqlite3.Connection,
+) -> None:
+    """Test the original aggregate example without a named alias."""
+    orders = Table("orders")
+    orders_ge = 3
+
+    query, params = (
+        select(
+            orders.status,
+            func.count(orders.id),
+            func.sum(orders.total),
+        )
+        .from_(orders)
+        .group_by(orders.status)
+        .having(func.count(orders.id) >= orders_ge)
+        .compile()
+    )
+
+    rows = _fetch_rows(sqlite_db, query, params)
+
+    assert rows == [("completed", 4, 640)]

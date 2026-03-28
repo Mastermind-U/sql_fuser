@@ -156,6 +156,33 @@ def test_aggregate_with_having() -> None:
     assert params == (5,)
 
 
+def test_aggregate_example_without_alias() -> None:
+    """Test the original README example without an explicit alias."""
+    orders = Table("orders")
+    orders_min = 3
+
+    q = (
+        select(
+            orders.status,
+            func.count(orders.id),
+            func.sum(orders.total),
+        )
+        .from_(orders)
+        .group_by(orders.status)
+        .having(func.count(orders.id) >= orders_min)
+    )
+
+    sql, params = q.build_query()
+
+    assert sql == (
+        'SELECT "a"."status", COUNT("a"."id"), SUM("a"."total") '
+        'FROM "orders" AS "a" '
+        'GROUP BY "a"."status" '
+        'HAVING COUNT("a"."id") >= ?'
+    )
+    assert params == (3,)
+
+
 def test_custom_function() -> None:
     """Test custom user-defined function."""
     users = Table("users")
