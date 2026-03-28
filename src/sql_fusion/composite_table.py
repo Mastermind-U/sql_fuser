@@ -4,22 +4,68 @@ from typing import Any, Callable, Protocol, TypeGuard, cast
 
 from .operators import OPERATORS
 
+ColumnComparisonHandler = Callable[[str, str], str]
+
+COLUMN_COMPARISON_OPERATORS: dict[str, ColumnComparisonHandler] = {
+    "=": lambda column_ref, value_ref: f"{column_ref} = {value_ref}",
+    "!=": lambda column_ref, value_ref: f"{column_ref} != {value_ref}",
+    "<": lambda column_ref, value_ref: f"{column_ref} < {value_ref}",
+    ">": lambda column_ref, value_ref: f"{column_ref} > {value_ref}",
+    "<=": lambda column_ref, value_ref: f"{column_ref} <= {value_ref}",
+    ">=": lambda column_ref, value_ref: f"{column_ref} >= {value_ref}",
+}
+
 
 class QueryLike(Protocol):
     def build_query(self) -> tuple[str, tuple[Any, ...]]: ...
 
 
+class RefComparable:
+    def get_ref(self) -> str:
+        raise NotImplementedError()
+
+    def to_sql(self) -> str:
+        return self.get_ref()
+
+    def ref_to_sql(self, col_ref: str, operator: str) -> str:
+        comparator = COLUMN_COMPARISON_OPERATORS.get(operator)
+        if comparator is None:
+            return ""
+        return comparator(col_ref, self.get_ref())
+
+    def __eq__(self, other: object) -> Condition:  # type: ignore[override]
+        return Condition(column=self, operator="=", value=other)
+
+    def __ne__(self, other: object) -> Condition:  # type: ignore[override]
+        return Condition(column=self, operator="!=", value=other)
+
+    def __lt__(self, other: Any) -> Condition:
+        return Condition(column=self, operator="<", value=other)
+
+    def __gt__(self, other: Any) -> Condition:
+        return Condition(column=self, operator=">", value=other)
+
+    def __le__(self, other: Any) -> Condition:
+        return Condition(column=self, operator="<=", value=other)
+
+    def __ge__(self, other: Any) -> Condition:
+        return Condition(column=self, operator=">=", value=other)
+
+    def __hash__(self) -> int:
+        raise TypeError(f"unhashable type: '{type(self).__name__}'")
+
+
 class Condition:
     def __init__(  # noqa: PLR0913
         self,
-        column: Column | Alias | FunctionCall | None = None,
+        column: RefComparable | FunctionCall | None = None,
         operator: str = "",
         value: object | None = None,
         is_and: bool = True,
         left: Condition | None = None,
         right: Condition | None = None,
     ) -> None:
-        self.column: Column | Alias | FunctionCall | None = column
+        self.column: RefComparable | FunctionCall | None = column
         self.operator: str = operator
         self.value: object | None = value
         self.is_and: bool = is_and
@@ -69,11 +115,10 @@ class Condition:
 
         col_ref: str = self.column.get_ref()
 
-        if isinstance(self.value, (Column, Alias)):
-            return _render_column_comparison(
-                col_ref,
-                self.operator,
-                self.value.get_ref(),
+        if isinstance(self.value, RefComparable):
+            return (
+                self.value.ref_to_sql(col_ref, self.operator),
+                tuple(),
             )
 
         if _is_query_like(self.value):
@@ -102,7 +147,7 @@ class Condition:
         return "", tuple()
 
 
-class Alias:
+class Alias(RefComparable):
     """Represents a named SQL alias."""
 
     def __init__(self, name: str) -> None:
@@ -110,30 +155,6 @@ class Alias:
 
     def get_ref(self) -> str:
         return f'"{self.name}"'
-
-    def to_sql(self) -> str:
-        return self.get_ref()
-
-    def __eq__(self, other: object) -> Condition:  # type: ignore[override]
-        return Condition(column=self, operator="=", value=other)
-
-    def __ne__(self, other: object) -> Condition:  # type: ignore[override]
-        return Condition(column=self, operator="!=", value=other)
-
-    def __lt__(self, other: Any) -> Condition:
-        return Condition(column=self, operator="<", value=other)
-
-    def __gt__(self, other: Any) -> Condition:
-        return Condition(column=self, operator=">", value=other)
-
-    def __le__(self, other: Any) -> Condition:
-        return Condition(column=self, operator="<=", value=other)
-
-    def __ge__(self, other: Any) -> Condition:
-        return Condition(column=self, operator=">=", value=other)
-
-    def __hash__(self) -> int:
-        raise TypeError(f"unhashable type: '{type(self).__name__}'")
 
     def __repr__(self) -> str:
         return f"Alias({self.name!r})"
@@ -261,28 +282,13 @@ class FunctionRegistry:
 func = FunctionRegistry()
 
 
-class Column:
+class Column(RefComparable):
     def __init__(self, name: str, table_alias: str) -> None:
         self.name: str = name
         self.table_alias: str = table_alias
 
-    def __eq__(self, other: object) -> Condition:  # type: ignore[override]
-        return Condition(column=self, operator="=", value=other)
-
-    def __ne__(self, other: object) -> Condition:  # type: ignore[override]
-        return Condition(column=self, operator="!=", value=other)
-
-    def __lt__(self, other: Any) -> Condition:
-        return Condition(column=self, operator="<", value=other)
-
-    def __gt__(self, other: Any) -> Condition:
-        return Condition(column=self, operator=">", value=other)
-
-    def __le__(self, other: Any) -> Condition:
-        return Condition(column=self, operator="<=", value=other)
-
-    def __ge__(self, other: Any) -> Condition:
-        return Condition(column=self, operator=">=", value=other)
+    def get_ref(self) -> str:
+        return f'"{self.table_alias}"."{self.name}"'
 
     def like(self, pattern: str) -> Condition:
         return Condition(column=self, operator="LIKE", value=pattern)
@@ -295,31 +301,6 @@ class Column:
 
     def not_in(self, values: tuple[Any, ...] | list[Any] | Any) -> Condition:
         return Condition(column=self, operator="NOT IN", value=values)
-
-    def __hash__(self) -> int:
-        raise TypeError(f"unhashable type: '{type(self).__name__}'")
-
-    def get_ref(self) -> str:
-        return f'"{self.table_alias}"."{self.name}"'
-
-    def ref_to_sql(self, col_ref: str, operator: str) -> str:
-        value_ref: str = self.get_ref()
-        cref = ""
-
-        if operator == "=":
-            cref = f"{col_ref} = {value_ref}"
-        if operator == "!=":
-            cref = f"{col_ref} != {value_ref}"
-        if operator == "<":
-            cref = f"{col_ref} < {value_ref}"
-        if operator == ">":
-            cref = f"{col_ref} > {value_ref}"
-        if operator == "<=":
-            cref = f"{col_ref} <= {value_ref}"
-        if operator == ">=":
-            cref = f"{col_ref} >= {value_ref}"
-
-        return cref
 
 
 class Table:
@@ -386,7 +367,7 @@ def _is_value_sequence(value: object | None) -> TypeGuard[Sequence[Any]]:
 def _render_condition_value(
     value: object | None,
 ) -> tuple[str | None, tuple[Any, ...]]:
-    if isinstance(value, (Column, Alias)):
+    if isinstance(value, RefComparable):
         return value.get_ref(), tuple()
 
     if isinstance(value, FunctionCall):
@@ -398,24 +379,3 @@ def _render_condition_value(
         return f"({subquery_sql})", subquery_params
 
     return None, tuple()
-
-
-def _render_column_comparison(
-    column_ref: str,
-    operator: str,
-    value_ref: str,
-) -> tuple[str, tuple[Any, ...]]:
-    if operator == "=":
-        return f"{column_ref} = {value_ref}", tuple()
-    if operator == "!=":
-        return f"{column_ref} != {value_ref}", tuple()
-    if operator == "<":
-        return f"{column_ref} < {value_ref}", tuple()
-    if operator == ">":
-        return f"{column_ref} > {value_ref}", tuple()
-    if operator == "<=":
-        return f"{column_ref} <= {value_ref}", tuple()
-    if operator == ">=":
-        return f"{column_ref} >= {value_ref}", tuple()
-
-    return "", tuple()
