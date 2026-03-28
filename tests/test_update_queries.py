@@ -7,7 +7,7 @@ from duckdb_builder import Table, update
 
 def test_update_set_returns_sql() -> None:
     table = Table("users")
-    query, params = update(table).set(name="Alice", status="active").as_tuple()
+    query, params = update(table).set(name="Alice", status="active").compile()
     assert (
         query == 'UPDATE "users" AS "a" SET "a"."name" = ?, "a"."status" = ?'
     )
@@ -17,7 +17,7 @@ def test_update_set_returns_sql() -> None:
 def test_update_set_method_merges_calls() -> None:
     table = Table("users")
     query, params = (
-        update(table).set(id=2).set(name="Carol", status="pending").as_tuple()
+        update(table).set(id=2).set(name="Carol", status="pending").compile()
     )
     assert query == (
         'UPDATE "users" AS "a" '
@@ -33,7 +33,7 @@ def test_update_with_where_clause() -> None:
         update(table)
         .set(status="inactive")
         .where(table.id == user_id)
-        .as_tuple()
+        .compile()
     )
     assert (
         query
@@ -46,6 +46,6 @@ def test_update_values_must_be_provided_once() -> None:
     table = Table("users")
     builder = update(table)
     with pytest.raises(ValueError, match="No values provided for update"):
-        builder.as_tuple()
+        builder.compile()
     with pytest.raises(ValueError, match="No values provided for update"):
-        builder.set().as_tuple()
+        builder.set().compile()

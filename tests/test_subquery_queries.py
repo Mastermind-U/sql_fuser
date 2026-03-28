@@ -6,7 +6,7 @@ from duckdb_builder import Table, select
 def test_select_from_subquery() -> None:
     orders = Table("orders")
     paid_orders = select(orders.user_id).from_(orders).where_by(status="paid")
-    query, params = select().from_(paid_orders).as_tuple()
+    query, params = select().from_(paid_orders).compile()
     assert query == (
         "SELECT * "
         'FROM (SELECT "a"."user_id" '
@@ -18,7 +18,7 @@ def test_select_from_subquery() -> None:
 
 def test_select_from_clause_with_columns() -> None:
     users = Table("users")
-    query, params = select(users.name).from_(users).as_tuple()
+    query, params = select(users.name).from_(users).compile()
     assert query == 'SELECT "a"."name" FROM "users" AS "a"'
     assert params == ()
 
@@ -33,7 +33,7 @@ def test_in_subquery_in_where() -> None:
         select()
         .from_(users)
         .where(users.id.in_(paid_order_user_ids))
-        .as_tuple()
+        .compile()
     )
     assert query == (
         "SELECT * "
@@ -51,7 +51,7 @@ def test_not_in_subquery_in_where() -> None:
     banned_users = Table("banned_users")
     banned_ids = select(banned_users.user_id).from_(banned_users)
     query, params = (
-        select().from_(users).where(users.id.not_in(banned_ids)).as_tuple()
+        select().from_(users).where(users.id.not_in(banned_ids)).compile()
     )
     assert query == (
         "SELECT * "

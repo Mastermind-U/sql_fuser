@@ -9,7 +9,7 @@ def test_group_by_single_column() -> None:
         select(table.department, table.total)
         .from_(table)
         .group_by(table.department)
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."department", "a"."total" '
@@ -24,7 +24,7 @@ def test_group_by_multiple_columns() -> None:
         select(table.city, table.street_name, table.income)
         .from_(table)
         .group_by(table.city, table.street_name)
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."city", "a"."street_name", "a"."income" '
@@ -41,7 +41,7 @@ def test_group_by_with_where_clause() -> None:
         .from_(table)
         .where_by(active=True)
         .group_by(table.department)
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."department", "a"."salary" '
@@ -59,7 +59,7 @@ def test_group_by_with_having_condition() -> None:
         .from_(table)
         .group_by(table.customer_id)
         .having_by(total_amount=">1000")
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."customer_id", "a"."total_amount" '
@@ -78,7 +78,7 @@ def test_group_by_with_where_and_having() -> None:
         .where(table.status == "completed")
         .group_by(table.account_id)
         .having_by(amount=">500")
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."account_id", "a"."amount" '
@@ -92,7 +92,7 @@ def test_group_by_with_where_and_having() -> None:
 
 def test_group_by_all_basic() -> None:
     table = Table("users")
-    query, params = select().from_(table).group_by().as_tuple()
+    query, params = select().from_(table).group_by().compile()
     assert query == ('SELECT * FROM "users" AS "a" GROUP BY ALL')
     assert params == ()
 
@@ -100,7 +100,7 @@ def test_group_by_all_basic() -> None:
 def test_group_by_all_with_specific_columns() -> None:
     table = Table("users")
     query, params = (
-        select(table.name, table.value).from_(table).group_by().as_tuple()
+        select(table.name, table.value).from_(table).group_by().compile()
     )
     assert query == (
         'SELECT "a"."name", "a"."value" FROM "users" AS "a" GROUP BY ALL'
@@ -111,7 +111,7 @@ def test_group_by_all_with_specific_columns() -> None:
 def test_group_by_all_with_where_clause() -> None:
     table = Table("users")
     query, params = (
-        select().from_(table).where_by(active=True).group_by().as_tuple()
+        select().from_(table).where_by(active=True).group_by().compile()
     )
     assert query == (
         'SELECT * FROM "users" AS "a" WHERE "a"."active" = ? GROUP BY ALL'
@@ -122,7 +122,7 @@ def test_group_by_all_with_where_clause() -> None:
 def test_group_by_all_with_having() -> None:
     table = Table("users")
     query, params = (
-        select().from_(table).group_by().having_by(value=">100").as_tuple()
+        select().from_(table).group_by().having_by(value=">100").compile()
     )
     assert query == (
         'SELECT * FROM "users" AS "a" GROUP BY ALL HAVING "a"."value" = ?'
@@ -138,7 +138,7 @@ def test_group_by_all_with_where_and_having() -> None:
         .where_by(type="numeric")
         .group_by()
         .having_by(value=">50")
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."id", "a"."value" '
@@ -156,7 +156,7 @@ def test_group_by_rollup_two_columns() -> None:
         select(table.city, table.street_name, table.income)
         .from_(table)
         .group_by_rollup(table.city, table.street_name)
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."city", "a"."street_name", "a"."income" '
@@ -173,7 +173,7 @@ def test_group_by_rollup_single_column() -> None:
         select(table.department, table.count)
         .from_(table)
         .group_by_rollup(table.department)
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."department", "a"."count" '
@@ -191,7 +191,7 @@ def test_group_by_rollup_with_where_clause() -> None:
         .from_(table)
         .where_by(status="completed")
         .group_by_rollup(table.year, table.month)
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."year", "a"."month", "a"."sales" '
@@ -210,7 +210,7 @@ def test_group_by_rollup_with_having() -> None:
         .from_(table)
         .group_by_rollup(table.city, table.region)
         .having_by(total=">1000")
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."city", "a"."region", "a"."total" '
@@ -237,7 +237,7 @@ def test_group_by_cube_two_columns() -> None:
         select(table.city, table.street_name, table.income)
         .from_(table)
         .group_by_cube(table.city, table.street_name)
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."city", "a"."street_name", "a"."income" '
@@ -254,7 +254,7 @@ def test_group_by_cube_single_column() -> None:
         select(table.category, table.quantity)
         .from_(table)
         .group_by_cube(table.category)
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."category", "a"."quantity" '
@@ -272,7 +272,7 @@ def test_group_by_cube_with_where_clause() -> None:
         .from_(table)
         .where_by(year=2024)
         .group_by_cube(table.dimension1, table.dimension2)
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."dimension1", "a"."dimension2", "a"."value" '
@@ -291,7 +291,7 @@ def test_group_by_cube_with_having() -> None:
         .from_(table)
         .group_by_cube(table.region, table.product)
         .having_by(sum_value=">5000")
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."region", "a"."product", "a"."sum_value" '
@@ -323,7 +323,7 @@ def test_group_by_grouping_sets_multiple_sets() -> None:
             (table.street_name,),
             (),
         )
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."city", "a"."street_name", "a"."income" '
@@ -342,7 +342,7 @@ def test_group_by_grouping_sets_single_set() -> None:
         select(table.department, table.count)
         .from_(table)
         .group_by_grouping_sets((table.department,))
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."department", "a"."count" '
@@ -359,7 +359,7 @@ def test_group_by_grouping_sets_with_empty_set() -> None:
         select(table.col1, table.col2, table.total)
         .from_(table)
         .group_by_grouping_sets((table.col1, table.col2), (table.col1,), ())
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."col1", "a"."col2", "a"."total" '
@@ -377,7 +377,7 @@ def test_group_by_grouping_sets_with_where_clause() -> None:
         .from_(table)
         .where_by(status="confirmed")
         .group_by_grouping_sets((table.year, table.month), (table.year,), ())
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."year", "a"."month", "a"."amount" '
@@ -400,7 +400,7 @@ def test_group_by_grouping_sets_with_having() -> None:
             (),
         )
         .having_by(revenue=">10000")
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."region", "a"."zone", "a"."revenue" '
@@ -447,7 +447,7 @@ def test_group_by_with_filter_chaining() -> None:
         .where_by(status="active")
         .where_by(salary=">50000")
         .group_by(table.department)
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."department", "a"."salary" '
@@ -466,7 +466,7 @@ def test_group_by_rollup_with_multiple_having_conditions() -> None:
         .group_by_rollup(table.city, table.product)
         .having_by(total=">1000")
         .having_by(city="New York")
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."city", "a"."product", "a"."total" '
@@ -486,7 +486,7 @@ def test_group_by_cube_with_filter_and_having() -> None:
         .where_by(year=2024)
         .group_by_cube(table.category, table.subcategory)
         .having_by(value=">100")
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'SELECT "a"."category", "a"."subcategory", "a"."value" '

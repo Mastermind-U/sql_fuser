@@ -79,5 +79,5 @@ class AbstractQuery:
     def build_query(self) -> tuple[str, tuple[Any, ...]]:
         raise NotImplementedError()
 
-    def as_tuple(self) -> tuple[str, tuple[Any, ...]]:
+    def compile(self) -> tuple[str, tuple[Any, ...]]:
         return self.build_query()

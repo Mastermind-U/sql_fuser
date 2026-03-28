@@ -5,7 +5,7 @@ from duckdb_builder import Table, delete, func
 
 def test_delete_returning_all() -> None:
     table = Table("users")
-    query, params = delete().from_(table).returning().as_tuple()
+    query, params = delete().from_(table).returning().compile()
     assert query == 'DELETE FROM "users" AS "a" RETURNING *'
     assert params == ()
 
@@ -17,7 +17,7 @@ def test_delete_returning_method_merges_calls() -> None:
         .from_(table)
         .returning(table.id)
         .returning(table.name)
-        .as_tuple()
+        .compile()
     )
     assert query == 'DELETE FROM "users" AS "a" RETURNING "a"."id", "a"."name"'
     assert params == ()
@@ -30,7 +30,7 @@ def test_delete_with_where_and_returning_expression() -> None:
         .from_(table)
         .where(table.status == "inactive")
         .returning(table.id, func.upper(table.email))
-        .as_tuple()
+        .compile()
     )
     assert query == (
         'DELETE FROM "users" AS "a" '
@@ -43,6 +43,6 @@ def test_delete_with_where_and_returning_expression() -> None:
 def test_delete_where_only_is_allowed() -> None:
     table = Table("users")
     user_id = 3
-    query, params = delete().from_(table).where(table.id == user_id).as_tuple()
+    query, params = delete().from_(table).where(table.id == user_id).compile()
     assert query == 'DELETE FROM "users" AS "a" WHERE "a"."id" = ?'
     assert params == (user_id,)
