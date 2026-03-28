@@ -34,7 +34,7 @@ class Condition:
         )
         return result
 
-    def to_sql(self) -> tuple[str, tuple[Any, ...]]:
+    def to_sql(self) -> tuple[str, tuple[Any, ...]]:  # noqa: PLR0911
         if self.left and self.right:
             left_sql, left_params = self.left.to_sql()
             right_sql, right_params = self.right.to_sql()
@@ -139,27 +139,21 @@ class FunctionCall:
         return f"{self.name}({args_sql})", tuple(params)
 
     def __eq__(self, other: object) -> Any:  # type: ignore[override]
-
         return Condition(column=self, operator="=", value=other)
 
     def __ne__(self, other: object) -> Any:  # type: ignore[override]
-
         return Condition(column=self, operator="!=", value=other)
 
     def __lt__(self, other: Any) -> Any:
-
         return Condition(column=self, operator="<", value=other)
 
     def __gt__(self, other: Any) -> Any:
-
         return Condition(column=self, operator=">", value=other)
 
     def __le__(self, other: Any) -> Any:
-
         return Condition(column=self, operator="<=", value=other)
 
     def __ge__(self, other: Any) -> Any:
-
         return Condition(column=self, operator=">=", value=other)
 
     def __repr__(self) -> str:
