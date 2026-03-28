@@ -1,15 +1,18 @@
-"""Integration tests for duckdb backend."""
+"""Integration tests for duckdb backend, fully compatible with Postgres."""
 
 from collections.abc import Iterator
 from typing import Any
 
 import pytest
 
-from sql_fusion import Table, select
+from sql_fusion import Table, delete, func, insert, select, update
 
 MIN_USER_AGE = 30
 MIN_JOIN_TOTAL = 100
 MAX_PENDING_TOTAL = 60
+NEW_USER_ID = 6
+UPDATED_USER_ID = 2
+DELETED_USER_ID = 4
 
 
 @pytest.fixture
@@ -36,6 +39,22 @@ def _create_schema(connection: Any) -> None:
             status TEXT NOT NULL,
             country TEXT NOT NULL,
             email TEXT NOT NULL
+        )
+        """,
+    )
+    connection.execute(
+        """
+        CREATE TABLE join_left (
+            id INTEGER PRIMARY KEY,
+            label TEXT NOT NULL
+        )
+        """,
+    )
+    connection.execute(
+        """
+        CREATE TABLE join_right (
+            id INTEGER PRIMARY KEY,
+            label TEXT NOT NULL
         )
         """,
     )
@@ -73,7 +92,39 @@ def _seed_data(connection: Any) -> None:
             (6, 2, 20, "completed"),
         ],
     )
+    connection.executemany(
+        "INSERT INTO join_left VALUES (?, ?)",
+        [
+            (1, "L1"),
+            (2, "L2"),
+            (3, "L3"),
+        ],
+    )
+    connection.executemany(
+        "INSERT INTO join_right VALUES (?, ?)",
+        [
+            (2, "R2"),
+            (3, "R3"),
+            (4, "R4"),
+        ],
+    )
+    _create_indexes(connection)
     connection.commit()
+
+
+def _create_indexes(connection: Any) -> None:
+    connection.execute(
+        "CREATE INDEX idx_users_status ON users(status)",
+    )
+    connection.execute(
+        "CREATE INDEX idx_users_country ON users(country)",
+    )
+    connection.execute(
+        "CREATE INDEX idx_orders_user_id ON orders(user_id)",
+    )
+    connection.execute(
+        "CREATE INDEX idx_orders_status ON orders(status)",
+    )
 
 
 def _fetch_rows(
@@ -82,6 +133,34 @@ def _fetch_rows(
     params: tuple[Any, ...],
 ) -> list[tuple[Any, ...]]:
     return connection.execute(sql, params).fetchall()
+
+
+def _sorted_rows(rows: list[tuple[Any, ...]]) -> list[tuple[Any, ...]]:
+    return sorted(rows, key=repr)
+
+
+def _order_by_second_column_desc_limit_two(
+    sql: str,
+    params: tuple[Any, ...],
+) -> tuple[str, tuple[Any, ...]]:
+    return f"{sql} ORDER BY 2 DESC LIMIT 2", params
+
+
+def _duckdb_update_set_unqualified(
+    sql: str,
+    params: tuple[Any, ...],
+) -> tuple[str, tuple[Any, ...]]:
+    qualified_ref = '"a".'
+    before_set, after_set = sql.split(" SET ", 1)
+    if " WHERE " in after_set:
+        set_clause, tail = after_set.split(" WHERE ", 1)
+        return (
+            f"{before_set} SET {set_clause.replace(qualified_ref, '')} "
+            f"WHERE {tail}",
+            params,
+        )
+
+    return f"{before_set} SET {after_set.replace(qualified_ref, '')}", params
 
 
 def test_complex_user_filter(duckdb_db: Any) -> None:
@@ -157,3 +236,300 @@ def test_complex_subquery_filter(duckdb_db: Any) -> None:
     rows = _fetch_rows(duckdb_db, query, params)
 
     assert sorted(rows) == [(1, "Alice"), (3, "Carol")]
+
+
+def test_group_by_with_aggregation(duckdb_db: Any) -> None:
+    orders = Table("orders")
+    query, params = (
+        select(
+            orders.status,
+            func.count(orders.id),
+            func.sum(orders.total),
+        )
+        .from_(orders)
+        .group_by(orders.status)
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert sorted(rows) == [
+        ("cancelled", 1, 80),
+        ("completed", 4, 640),
+        ("pending", 1, 50),
+    ]
+
+
+def test_inner_join(duckdb_db: Any) -> None:
+    left = Table("join_left")
+    right = Table("join_right")
+    query, params = (
+        select(left.id, left.label, right.label)
+        .from_(left)
+        .join(right, left.id == right.id)
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert _sorted_rows(rows) == [
+        (2, "L2", "R2"),
+        (3, "L3", "R3"),
+    ]
+
+
+def test_left_join(duckdb_db: Any) -> None:
+    left = Table("join_left")
+    right = Table("join_right")
+    query, params = (
+        select(left.id, left.label, right.label)
+        .from_(left)
+        .left_join(right, left.id == right.id)
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert _sorted_rows(rows) == [
+        (1, "L1", None),
+        (2, "L2", "R2"),
+        (3, "L3", "R3"),
+    ]
+
+
+def test_right_join(duckdb_db: Any) -> None:
+    left = Table("join_left")
+    right = Table("join_right")
+    query, params = (
+        select(left.id, left.label, right.label)
+        .from_(left)
+        .right_join(right, left.id == right.id)
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert _sorted_rows(rows) == [
+        (2, "L2", "R2"),
+        (3, "L3", "R3"),
+        (None, None, "R4"),
+    ]
+
+
+def test_full_join(duckdb_db: Any) -> None:
+    left = Table("join_left")
+    right = Table("join_right")
+    query, params = (
+        select(left.id, left.label, right.label)
+        .from_(left)
+        .full_join(right, left.id == right.id)
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert _sorted_rows(rows) == [
+        (1, "L1", None),
+        (2, "L2", "R2"),
+        (3, "L3", "R3"),
+        (None, None, "R4"),
+    ]
+
+
+def test_cross_join(duckdb_db: Any) -> None:
+    left = Table("join_left")
+    right = Table("join_right")
+    query, params = (
+        select(left.id, right.id).from_(left).cross_join(right).compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert _sorted_rows(rows) == [
+        (1, 2),
+        (1, 3),
+        (1, 4),
+        (2, 2),
+        (2, 3),
+        (2, 4),
+        (3, 2),
+        (3, 3),
+        (3, 4),
+    ]
+
+
+def test_semi_join(duckdb_db: Any) -> None:
+    left = Table("join_left")
+    right = Table("join_right")
+    query, params = (
+        select(left.id, left.label)
+        .from_(left)
+        .semi_join(right, left.id == right.id)
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert _sorted_rows(rows) == [
+        (2, "L2"),
+        (3, "L3"),
+    ]
+
+
+def test_anti_join(duckdb_db: Any) -> None:
+    left = Table("join_left")
+    right = Table("join_right")
+    query, params = (
+        select(left.id, left.label)
+        .from_(left)
+        .anti_join(right, left.id == right.id)
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert _sorted_rows(rows) == [
+        (1, "L1"),
+    ]
+
+
+def test_cte_with_join_and_aggregation(duckdb_db: Any) -> None:
+    orders = Table("orders")
+    users = Table("users")
+    paid_orders = Table("paid_orders")
+
+    paid_orders_cte = (
+        select(orders.user_id, orders.total)
+        .from_(orders)
+        .where_by(status="completed")
+    )
+
+    query, params = (
+        select(users.name, func.sum(paid_orders.total))
+        .with_(paid_orders=paid_orders_cte)
+        .from_(paid_orders)
+        .join(users, paid_orders.user_id == users.id)
+        .group_by(users.name)
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert _sorted_rows(rows) == [
+        ("Alice", 120),
+        ("Bob", 20),
+        ("Carol", 200),
+        ("Erin", 300),
+    ]
+
+
+def test_cte_with_custom_compile_expression(duckdb_db: Any) -> None:
+    orders = Table("orders")
+    completed_users = Table("completed_users")
+    users = Table("users")
+
+    completed_users_cte = (
+        select(orders.user_id).from_(orders).where_by(status="completed")
+    )
+
+    query, params = (
+        select(users.name, users.age)
+        .with_(completed_users=completed_users_cte)
+        .from_(completed_users)
+        .join(users, completed_users.user_id == users.id)
+        .compile_expression(_order_by_second_column_desc_limit_two)
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert rows == [
+        ("Carol", 41),
+        ("Erin", 36),
+    ]
+
+
+def test_custom_compile_expression_with_aggregation(duckdb_db: Any) -> None:
+    orders = Table("orders")
+    query, params = (
+        select(orders.status, func.sum(orders.total))
+        .from_(orders)
+        .group_by(orders.status)
+        .compile_expression(_order_by_second_column_desc_limit_two)
+        .compile()
+    )
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert rows == [
+        ("completed", 640),
+        ("cancelled", 80),
+    ]
+
+
+def test_insert_user_row(duckdb_db: Any) -> None:
+    users = Table("users")
+
+    query, params = (
+        insert(users)
+        .values(
+            id=6,
+            name="Frank",
+            age=31,
+            status="active",
+            country="US",
+            email="frank@example.com",
+        )
+        .compile()
+    )
+    _fetch_rows(duckdb_db, query, params)
+
+    rows = _fetch_rows(
+        duckdb_db,
+        "SELECT id, name, age, status, country, email FROM users WHERE id = ?",
+        (NEW_USER_ID,),
+    )
+
+    assert rows == [
+        (NEW_USER_ID, "Frank", 31, "active", "US", "frank@example.com"),
+    ]
+
+
+def test_update_user_row(duckdb_db: Any) -> None:
+    users = Table("users")
+
+    query, params = (
+        update(users)
+        .set(status="active", age=29)
+        .where(users.id == UPDATED_USER_ID)
+        .compile_expression(_duckdb_update_set_unqualified)
+        .compile()
+    )
+    _fetch_rows(duckdb_db, query, params)
+
+    rows = _fetch_rows(
+        duckdb_db,
+        "SELECT id, name, age, status FROM users WHERE id = ?",
+        (UPDATED_USER_ID,),
+    )
+
+    assert rows == [
+        (UPDATED_USER_ID, "Bob", 29, "active"),
+    ]
+
+
+def test_delete_user_row(duckdb_db: Any) -> None:
+    users = Table("users")
+
+    query, params = (
+        delete().from_(users).where(users.id == DELETED_USER_ID).compile()
+    )
+    _fetch_rows(duckdb_db, query, params)
+
+    rows = _fetch_rows(
+        duckdb_db,
+        "SELECT COUNT(*) FROM users WHERE id = ?",
+        (DELETED_USER_ID,),
+    )
+
+    assert rows == [(0,)]
