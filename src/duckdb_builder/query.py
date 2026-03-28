@@ -434,7 +434,7 @@ class update(AbstractQuery):
 
 
 class delete(AbstractQuery):
-    def __init__(self, table: Table) -> None:
+    def __init__(self, table: Table | None = None) -> None:
         super().__init__(table=table, columns=())
         self._returning_columns: tuple[Column | FunctionCall, ...] = ()
         self._returning_all: bool = False
@@ -481,3 +481,8 @@ class delete(AbstractQuery):
             query += f" RETURNING {', '.join(returning_parts)}"
 
         return query, tuple(params)
+
+    def from_(self, table: Table | AbstractQuery) -> Self:
+        qs = copy(self)
+        qs._table = table if isinstance(table, Table) else Table(table)
+        return qs

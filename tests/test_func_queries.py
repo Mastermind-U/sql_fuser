@@ -74,7 +74,9 @@ def test_multiple_aggregate_functions() -> None:
     """Test multiple aggregate functions in SELECT."""
     orders = Table("orders")
     q = select(
-        func.count(orders.id), func.sum(orders.total), func.avg(orders.total),
+        func.count(orders.id),
+        func.sum(orders.total),
+        func.avg(orders.total),
     ).from_(orders)
     sql, params = q.build_query()
     assert (

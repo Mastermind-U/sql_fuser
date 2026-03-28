@@ -207,7 +207,8 @@ def test_group_by_rollup_with_having() -> None:
 def test_group_by_rollup_without_columns_raises_error() -> None:
     table = Table("users")
     with pytest.raises(
-        ValueError, match="group_by_rollup\\(\\) requires at least one column",
+        ValueError,
+        match="group_by_rollup\\(\\) requires at least one column",
     ):
         select().from_(table).group_by_rollup()
 
@@ -277,7 +278,8 @@ def test_group_by_cube_with_having() -> None:
 def test_group_by_cube_without_columns_raises_error() -> None:
     table = Table("data")
     with pytest.raises(
-        ValueError, match="group_by_cube\\(\\) requires at least one column",
+        ValueError,
+        match="group_by_cube\\(\\) requires at least one column",
     ):
         select().from_(table).group_by_cube()
 
@@ -354,7 +356,9 @@ def test_group_by_grouping_sets_with_having() -> None:
         select(table.region, table.zone, table.revenue)
         .from_(table)
         .group_by_grouping_sets(
-            (table.region, table.zone), (table.region,), (),
+            (table.region, table.zone),
+            (table.region,),
+            (),
         )
         .having_by(revenue=">10000")
         .as_tuple()
@@ -378,7 +382,8 @@ def test_group_by_grouping_sets_without_sets_raises_error() -> None:
 def test_having_without_group_by_raises_error() -> None:
     table = Table("users")
     with pytest.raises(
-        ValueError, match="Cannot use having\\(\\) without group_by\\(\\)",
+        ValueError,
+        match="Cannot use having\\(\\) without group_by\\(\\)",
     ):
         select().from_(table).having()
 
@@ -386,7 +391,8 @@ def test_having_without_group_by_raises_error() -> None:
 def test_having_by_without_group_by_raises_error() -> None:
     table = Table("data")
     with pytest.raises(
-        ValueError, match="Cannot use having_by\\(\\) without group_by\\(\\)",
+        ValueError,
+        match="Cannot use having_by\\(\\) without group_by\\(\\)",
     ):
         select().from_(table).having_by(count=">5")
 
