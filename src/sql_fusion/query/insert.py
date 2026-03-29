@@ -1,7 +1,6 @@
 from typing import Any, Self
 
-from sql_fusion.composite_table import Table
-from sql_fusion.query.abstract_query import AbstractQuery
+from sql_fusion.composite_table import AbstractQuery, Table
 
 
 class insert(AbstractQuery):

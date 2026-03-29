@@ -2,6 +2,7 @@ from copy import copy
 from typing import Any, Self
 
 from sql_fusion.composite_table import (
+    AbstractQuery,
     Alias,
     Column,
     Condition,
@@ -9,7 +10,6 @@ from sql_fusion.composite_table import (
     Table,
 )
 from sql_fusion.operators import EqualOperator
-from sql_fusion.query.abstract_query import AbstractQuery
 
 
 class select(AbstractQuery):

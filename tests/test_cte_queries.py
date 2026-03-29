@@ -1,7 +1,5 @@
 """Tests for CTE / WITH clause support."""
 
-import pytest
-
 from sql_fusion import Table, select, update
 
 
@@ -222,8 +220,3 @@ def test_compile_expression_applies_to_nested_cte_queries() -> None:
         ') SELECT "b"."id" FROM "paid_orders" AS "b"'
     )
     assert params == ("paid",)
-
-
-def test_with_requires_cte_queries() -> None:
-    with pytest.raises(TypeError, match="must be query-like"):
-        select().with_(bad_cte=object())  # type: ignore

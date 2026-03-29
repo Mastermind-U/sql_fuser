@@ -1,12 +1,12 @@
 from typing import Any, Self
 
 from sql_fusion.composite_table import (
+    AbstractQuery,
     BinaryExpression,
     Column,
     FunctionCall,
     Table,
 )
-from sql_fusion.query.abstract_query import AbstractQuery
 
 
 class update(AbstractQuery):
@@ -38,6 +38,10 @@ class update(AbstractQuery):
             elif isinstance(value, (FunctionCall, BinaryExpression)):
                 value_sql, value_params = value.to_sql()
                 assignments.append(f"{column_ref} = {value_sql}")
+                params.extend(value_params)
+            elif isinstance(value, AbstractQuery):
+                value_sql, value_params = value.build_query()
+                assignments.append(f"{column_ref} = ({value_sql})")
                 params.extend(value_params)
             else:
                 assignments.append(f"{column_ref} = ?")

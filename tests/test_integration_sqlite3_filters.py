@@ -263,6 +263,71 @@ def test_update_with_all_binary_expression_operators(
     assert rows == [(11.0, 9.0, 20.0, 5.0)]
 
 
+def test_update_with_subquery_in_set_clause(
+    sqlite_db: sqlite3.Connection,
+) -> None:
+    sqlite_db.execute(
+        """
+        CREATE TABLE target_rows (
+            id INTEGER PRIMARY KEY,
+            group_id INTEGER NOT NULL,
+            x INTEGER NOT NULL,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        )
+        """,
+    )
+    sqlite_db.execute(
+        """
+        CREATE TABLE source_rows (
+            id INTEGER PRIMARY KEY,
+            group_id INTEGER NOT NULL,
+            xxx INTEGER NOT NULL
+        )
+        """,
+    )
+    sqlite_db.executemany(
+        "INSERT INTO target_rows VALUES (?, ?, ?, ?, ?)",
+        [
+            (1, 10, 0, 1, 1),
+            (2, 10, 0, 1, 2),
+            (3, 20, 0, 1, 1),
+        ],
+    )
+    sqlite_db.executemany(
+        "INSERT INTO source_rows VALUES (?, ?, ?)",
+        [
+            (1, 10, 7),
+            (2, 10, 11),
+            (3, 20, 5),
+        ],
+    )
+    sqlite_db.commit()
+
+    target = Table("target_rows")
+    source = Table("source_rows")
+    subquery = (
+        select(func.max(source.xxx))
+        .from_(source)
+        .where(source.group_id == target.group_id)
+    )
+    query, params = (
+        update(target)
+        .set(x=subquery)
+        .where(target.created_at == target.updated_at)
+        .compile()
+    )
+    _fetch_rows(sqlite_db, query, params)
+
+    rows = _fetch_rows(
+        sqlite_db,
+        "SELECT id, x FROM target_rows ORDER BY id",
+        (),
+    )
+
+    assert rows == [(1, 11), (2, 0), (3, 5)]
+
+
 def test_delete_user_row(sqlite_db: sqlite3.Connection) -> None:
     users = Table("users")
 

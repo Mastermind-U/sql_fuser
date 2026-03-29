@@ -2,7 +2,7 @@
 
 import pytest
 
-from sql_fusion import Table, select, update
+from sql_fusion import Table, func, select, update
 
 
 def test_update_set_returns_sql() -> None:
@@ -71,6 +71,26 @@ def test_update_set_column_by_column_expression() -> None:
         'UPDATE "users" AS "a" SET "counter" = "a"."counter" + ?'
     )
     assert params == (1,)
+
+
+def test_update_set_subquery_expression() -> None:
+    users = Table("users")
+    orders = Table("orders")
+    subquery = (
+        select(func.max(orders.total))
+        .from_(orders)
+        .where(orders.user_id == users.id)
+    )
+
+    query, params = update(users).set(total=subquery).compile()
+
+    assert query == (
+        'UPDATE "users" AS "a" '
+        'SET "total" = (SELECT MAX("b"."total") '
+        'FROM "orders" AS "b" '
+        'WHERE "b"."user_id" = "a"."id")'
+    )
+    assert params == ()
 
 
 def test_update_values_must_be_provided_once() -> None:

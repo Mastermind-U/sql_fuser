@@ -1,8 +1,12 @@
 from copy import copy
 from typing import Any, Self
 
-from sql_fusion.composite_table import Column, FunctionCall, Table
-from sql_fusion.query.abstract_query import AbstractQuery
+from sql_fusion.composite_table import (
+    AbstractQuery,
+    Column,
+    FunctionCall,
+    Table,
+)
 
 
 class delete(AbstractQuery):
