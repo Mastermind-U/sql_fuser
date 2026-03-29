@@ -321,8 +321,10 @@ def test_update_with_subquery_in_set_clause(
 
     rows = _fetch_rows(
         sqlite_db,
-        "SELECT id, x FROM target_rows ORDER BY id",
-        (),
+        *select(target.id, target.x)
+        .from_(target)
+        .order_by(target.id)
+        .compile(),
     )
 
     assert rows == [(1, 11), (2, 0), (3, 5)]
@@ -393,11 +395,86 @@ def test_update_with_multiple_subqueries_in_set_clause(
 
     rows = _fetch_rows(
         sqlite_db,
-        "SELECT id, max_x, source_count FROM target_rows ORDER BY id",
-        (),
+        *(
+            select(target.id, target.max_x, target.source_count)
+            .from_(target)
+            .order_by(target.id)
+            .compile()
+        ),
     )
 
     assert rows == [(1, 11, 2), (2, 0, 0), (3, 8, 2)]
+
+
+def test_update_with_ordered_subquery_in_set_clause(
+    sqlite_db: sqlite3.Connection,
+) -> None:
+    sqlite_db.execute(
+        """
+        CREATE TABLE activity_users (
+            id INTEGER PRIMARY KEY,
+            last_activity TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """,
+    )
+    sqlite_db.execute(
+        """
+        CREATE TABLE posts (
+            id INTEGER PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """,
+    )
+    sqlite_db.executemany(
+        "INSERT INTO activity_users VALUES (?, ?, ?, ?)",
+        [
+            (1, "2000-01-01 00:00:00", "2024-01-01 00:00:00", "2024-01-01 00:00:00"),
+            (2, "2000-01-01 00:00:00", "2024-01-02 00:00:00", "2024-01-02 00:00:00"),
+            (3, "2000-01-01 00:00:00", "2024-01-03 00:00:00", "2024-01-04 00:00:00"),
+        ],
+    )
+    sqlite_db.executemany(
+        "INSERT INTO posts VALUES (?, ?, ?)",
+        [
+            (1, 1, "2024-01-05 10:00:00"),
+            (2, 2, "2024-01-03 09:00:00"),
+            (3, 1, "2024-01-01 08:00:00"),
+        ],
+    )
+    sqlite_db.commit()
+
+    users = Table("activity_users")
+    posts = Table("posts")
+    subquery = (
+        select(posts.created_at)
+        .from_(posts)
+        .order_by(posts.created_at)
+        .limit(1)
+    )
+    query, params = (
+        update(users)
+        .set(last_activity=subquery)
+        .where(users.created_at == users.updated_at)
+        .compile()
+    )
+    _fetch_rows(sqlite_db, query, params)
+
+    rows = _fetch_rows(
+        sqlite_db,
+        *select(users.id, users.last_activity)
+        .from_(users)
+        .order_by(users.id)
+        .compile(),
+    )
+
+    assert rows == [
+        (1, "2024-01-01 08:00:00"),
+        (2, "2024-01-01 08:00:00"),
+        (3, "2000-01-01 00:00:00"),
+    ]
 
 
 def test_delete_user_row(sqlite_db: sqlite3.Connection) -> None:

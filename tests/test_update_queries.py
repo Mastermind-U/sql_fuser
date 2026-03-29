@@ -135,6 +135,29 @@ def test_update_set_multiple_subquery_expressions() -> None:
     assert params == ()
 
 
+def test_update_set_ordered_subquery_expression() -> None:
+    users = Table("users")
+    posts = Table("posts")
+
+    subquery = (
+        select(posts.created_at)
+        .from_(posts)
+        .order_by(posts.created_at)
+        .limit(1)
+    )
+
+    query, params = update(users).set(last_activity=subquery).compile()
+
+    assert query == (
+        'UPDATE "users" AS "a" '
+        'SET "last_activity" = (SELECT "b"."created_at" '
+        'FROM "posts" AS "b" '
+        'ORDER BY "b"."created_at" '
+        'LIMIT 1)'
+    )
+    assert params == ()
+
+
 def test_update_values_must_be_provided_once() -> None:
     table = Table("users")
     builder = update(table)
