@@ -230,6 +230,58 @@ def test_update_user_row(sqlite_db: sqlite3.Connection) -> None:
     ]
 
 
+def test_update_with_all_binary_expression_operators(
+    sqlite_db: sqlite3.Connection,
+) -> None:
+    sqlite_db.execute(
+        """
+        CREATE TABLE counters (
+            id INTEGER PRIMARY KEY,
+            add_value REAL NOT NULL,
+            sub_value REAL NOT NULL,
+            mul_value REAL NOT NULL,
+            div_value REAL NOT NULL
+        )
+        """,
+    )
+    sqlite_db.execute(
+        "INSERT INTO counters VALUES (?, ?, ?, ?, ?)",
+        (1, 10.0, 10.0, 10.0, 10.0),
+    )
+    sqlite_db.commit()
+
+    counters = Table("counters")
+    query, params = (
+        update(counters)
+        .set(
+            add_value=counters.add_value + 1,
+            sub_value=counters.sub_value - 1,
+            mul_value=counters.mul_value * 2,
+            div_value=counters.div_value / 2,
+        )
+        .where(
+            (1 + counters.add_value == 11)
+            & (20 - counters.sub_value == 10)
+            & (2 * counters.mul_value == 20)
+            & (100 / counters.div_value == 10)
+        )
+        .compile_expression(_sqlite_update_set_unqualified)
+        .compile()
+    )
+    _fetch_rows(sqlite_db, query, params)
+
+    rows = _fetch_rows(
+        sqlite_db,
+        (
+            "SELECT add_value, sub_value, mul_value, div_value "
+            "FROM counters WHERE id = ?"
+        ),
+        (1,),
+    )
+
+    assert rows == [(11.0, 9.0, 20.0, 5.0)]
+
+
 def test_delete_user_row(sqlite_db: sqlite3.Connection) -> None:
     users = Table("users")
 

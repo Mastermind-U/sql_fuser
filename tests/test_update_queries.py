@@ -64,6 +64,15 @@ def test_update_with_subquery_in_where_clause() -> None:
     assert params == ("inactive", "paid")
 
 
+def test_update_set_column_by_column_expression() -> None:
+    table = Table("users")
+    query, params = update(table).set(counter=table.counter + 1).compile()
+    assert query == (
+        'UPDATE "users" AS "a" SET "a"."counter" = "a"."counter" + ?'
+    )
+    assert params == (1,)
+
+
 def test_update_values_must_be_provided_once() -> None:
     table = Table("users")
     builder = update(table)

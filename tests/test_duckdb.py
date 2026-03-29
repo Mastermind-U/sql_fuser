@@ -187,10 +187,7 @@ def test_complex_user_filter(duckdb_db: Any) -> None:
 def test_like_filter(duckdb_db: Any) -> None:
     users = Table("users")
     query, params = (
-        select(users.name)
-        .from_(users)
-        .where(users.name.like("A%"))
-        .compile()
+        select(users.name).from_(users).where(users.name.like("A%")).compile()
     )
 
     rows = _fetch_rows(duckdb_db, query, params)
@@ -201,10 +198,7 @@ def test_like_filter(duckdb_db: Any) -> None:
 def test_ilike_filter(duckdb_db: Any) -> None:
     users = Table("users")
     query, params = (
-        select(users.name)
-        .from_(users)
-        .where(users.name.ilike("a%"))
-        .compile()
+        select(users.name).from_(users).where(users.name.ilike("a%")).compile()
     )
 
     rows = _fetch_rows(duckdb_db, query, params)
@@ -610,6 +604,57 @@ def test_update_user_row(duckdb_db: Any) -> None:
     assert rows == [
         (UPDATED_USER_ID, "Bob", 29, "active"),
     ]
+
+
+def test_update_with_all_binary_expression_operators(
+    duckdb_db: Any,
+) -> None:
+    duckdb_db.execute(
+        """
+        CREATE TABLE counters (
+            id INTEGER PRIMARY KEY,
+            add_value DOUBLE NOT NULL,
+            sub_value DOUBLE NOT NULL,
+            mul_value DOUBLE NOT NULL,
+            div_value DOUBLE NOT NULL
+        )
+        """,
+    )
+    duckdb_db.execute(
+        "INSERT INTO counters VALUES (?, ?, ?, ?, ?)",
+        (1, 10.0, 10.0, 10.0, 10.0),
+    )
+
+    counters = Table("counters")
+    query, params = (
+        update(counters)
+        .set(
+            add_value=counters.add_value + 1,
+            sub_value=counters.sub_value - 1,
+            mul_value=counters.mul_value * 2,
+            div_value=counters.div_value / 2,
+        )
+        .where(
+            (1 + counters.add_value == 11)
+            & (20 - counters.sub_value == 10)
+            & (2 * counters.mul_value == 20)
+            & (100 / counters.div_value == 10),
+        )
+        .compile_expression(_duckdb_update_set_unqualified)
+        .compile()
+    )
+    _fetch_rows(duckdb_db, query, params)
+
+    rows = _fetch_rows(
+        duckdb_db,
+        (
+            "SELECT add_value, sub_value, mul_value, div_value "
+            "FROM counters WHERE id = ?"
+        ),
+        (1,),
+    )
+
+    assert rows == [(11.0, 9.0, 20.0, 5.0)]
 
 
 def test_delete_user_row(duckdb_db: Any) -> None:
