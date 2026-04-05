@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.1 - 2026-04-05
+
+### Added
+
+- `Table` now accepts predefined `Column` objects at construction time.
+- Predeclared table columns are available through attribute access at runtime.
+- Public API export for `Column` to support table column declarations.
+- README examples for the new column declaration style.
+
+### Notes
+
+- Legacy dynamic table column access is still supported for existing code.
+
 ## 1.0.0 - 2026-04-05
 
 Initial stable release of `sql_fusion`.
