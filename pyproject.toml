@@ -1,6 +1,6 @@
 [project]
 name = "sql_fusion"
-version = "0.1.0"
+version = "1.0.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [{ name = "Mastermind-U", email = "rex49513@gmail.com" }]
@@ -8,7 +8,7 @@ requires-python = ">=3.14"
 dependencies = []
 
 [project.scripts]
-duckdb-builder = "duckdb_builder:main"
+sql_fuser = "sql_fuser:main"
 
 [build-system]
 requires = ["uv_build>=0.11.1,<0.12.0"]
