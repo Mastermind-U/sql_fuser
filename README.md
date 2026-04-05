@@ -37,7 +37,7 @@ That makes it easy to plug into your own connection layer.
 - automatic table aliases
 - composable conditions with `AND`, `OR`, and `NOT`
 - joins, subqueries, and CTEs
-- ordering, joins, subqueries, and CTEs
+- ordering and grouping with `GROUP BY`, `ROLLUP`, `CUBE`, and `GROUPING SETS`
 - aggregate and custom SQL functions through `func`
 - backend-specific SQL rewrites through compile expressions
 
