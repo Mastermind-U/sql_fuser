@@ -17,6 +17,7 @@ That makes it easy to plug into your own connection layer.
 
 ## Table of Contents
 
+- [Motivation](#motivation)
 - [What You Get](#what-you-get)
 - [Installation](#installation)
 - [Public API](#public-api)
@@ -30,6 +31,30 @@ That makes it easy to plug into your own connection layer.
 - [CTEs](#ctes)
 - [Custom Compile Expressions](#custom-compile-expressions)
 - [What To Remember](#what-to-remember)
+- [Feature Comparison](#feature-comparison)
+
+## Motivation
+
+SQL builders often look similar from the outside, but they make very different trade-offs in practice:
+
+- some are template-driven and mainly render filter fragments
+- some are lightweight CRUD helpers with a small API surface
+- some are broad SQL toolkits with dialect systems and advanced composition features
+- some keep SQL parameterized, while others render a finished SQL string directly
+
+This README compares SQL Fusion with several other Python query builders so it is easier to see where the library fits and what it is intentionally optimized for.
+
+### Why SQL Fusion?
+
+SQL Fusion is built for the middle ground:
+
+- it stays small and chainable instead of turning into a full ORM
+- it keeps SQL parameterized by default, so the caller controls execution safely
+- it supports real SQL building blocks like joins, subqueries, CTEs, and grouping helpers without forcing a dialect-specific API
+- it adds automatic alias management so common queries stay readable even as they grow
+- it exposes `compile_expression()` for the cases where the final SQL needs a backend-specific rewrite
+
+In short, the goal is to keep the ergonomics of a lightweight builder while still covering the parts of SQL that matter in real applications.
 
 ## What You Get
 
@@ -44,6 +69,14 @@ That makes it easy to plug into your own connection layer.
 ## Installation
 
 The project targets Python 3.14 or newer.
+Install it from PyPI:
+
+```bash
+pip install sql_fusion
+```
+```bash
+uv add sql_fusion
+```
 
 For local development:
 
@@ -600,3 +633,17 @@ The library also exposes a few built-in compile-time helpers:
 - query builders are chainable
 - repeated calls to many methods merge rather than overwrite
 - backend support still depends on the database you execute against
+
+## Feature Comparison
+
+
+| Project | Focus | SQL coverage | SQL injection protected | Automatic alias management | Advanced features | Dialect/output model | Takeaway |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Py-QueryBuilder | Template-driven filter rendering | No direct CRUD builder; it renders a `WHERE` fragment into a Jinja template | Yes, via JinjaSQL qmark placeholders and a separate params list | No, subquery and join aliases are template-defined rather than auto-managed by the builder | Nested rule groups, operator mapping, field pruning | Jinja2 + JinjaSQL, SQL formatting | Best for UI-driven search forms, not for composing full statements |
+| simple-query-builder-python | Small mutable CRUD helper | `SELECT`, `INSERT`, `UPDATE`, `DELETE` | Mostly yes, because execution uses `?` placeholders and a params tuple; `get_sql(with_values=True)` can inline values for display | No, subquery and join aliases are supplied manually in the input data | `JOIN`, `GROUP BY`, `HAVING`, `UNION`, `EXCEPT`, `INTERSECT`, `LIMIT`, `OFFSET` | SQLite-first, raw SQL string builder | Simple and approachable, but the SQL surface is modest |
+| sqlquerybuilder | Django-ORM-style queryset wrapper | Basic read/write queries | No, it renders a ready SQL string with values embedded into the query text | No, subquery and join aliases are handled manually in query strings | Filters and excludes, joins, grouping, ordering, `extra()`, slicing, `with_nolock()` | SQLite-oriented, with SQL Server pagination branches in code | Convenient for ORM-like chaining, but not aimed at deep SQL composition |
+| python-sql | Rich Pythonic SQL builder | `SELECT`, `INSERT`, `UPDATE`, `DELETE` | Yes, it keeps placeholders separate from args and can switch param styles via flavor | Partial, it can auto-alias tables and some subqueries, while join aliases are still often explicit | `JOIN`, subqueries, CTEs, `DISTINCT ON`, windows, `RETURNING`, `MERGE`, `UNION` / `INTERSECT` / `EXCEPT` | Dialect/flavor system with multiple param styles | Very broad SQL coverage and strong backend flexibility |
+| PyPika | Mature fluent query builder | `SELECT`, `INSERT`, `UPDATE`, `DELETE` | No by default, it renders literal SQL strings with values injected into the output | Partial, it auto-aliases some subqueries and duplicate joins, but most table and join aliases are explicit | `JOIN`, subqueries, CTEs, set operations, analytics/window helpers, DDL support | Dialect-aware with vendor-specific extensions | One of the broadest and most extensible builders in the set |
+| SQLFactory | General-purpose SQL builder | `SELECT`, `INSERT`, `UPDATE`, `DELETE` | Yes, it emits placeholders and keeps args separately | No, subquery and join aliases are mostly explicit and part of the statement shape | `JOIN`, subselects, CTEs, window functions, set operations, `INSERT ... SELECT`, MySQL-style duplicate-key handling | MySQL / SQLite / PostgreSQL / Oracle / custom dialects, async execution helpers | Full-featured and explicit, with a heavier API than lightweight builders |
+| SQL Fusion | Lightweight chainable builder | `SELECT`, `INSERT`, `UPDATE`, `DELETE` | Yes, it returns `(sql, params)` and leaves binding to the caller | Yes, it auto-assigns stable table aliases and reuses them for subqueries and joins | `JOIN` variants including `CROSS`, `SEMI`, `ANTI`, subqueries, recursive CTEs, `ROLLUP`, `CUBE`, `GROUPING SETS`, functions, comments, `EXPLAIN` / `ANALYZE`, `DELETE RETURNING` | Backend-agnostic, `compile_expression()` hook for rewrites | Best when you want a compact, composable builder with post-processing hooks and no execution layer |
+
