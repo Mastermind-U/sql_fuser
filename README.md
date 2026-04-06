@@ -102,7 +102,7 @@ from sql_fusion import (
     func,
     insert,
     select,
-    text,
+    text_op,
     update,
 )
 ```

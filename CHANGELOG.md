@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.1.0 - 2026-04-06
+
+### Added
+
+- `text_op(column, operator, value)` helper for backend-specific SQL operators.
+- Support for raw text operators in conditions, including PostgreSQL array
+  containment syntax such as `@>`.
+- Public API export for `text_op`.
+- README examples showing how to use `text_op()` for array containment filters.
+- DuckDB integration coverage for PostgreSQL-style array containment on
+  `TEXT[]` values.
+
+### Notes
+
+- `text_op()` is intended for dialect-specific operators that are not covered by
+  the built-in comparison helpers.
+- DuckDB supports the listed array operators on list-typed columns, so the
+  new integration test is executed in the default test suite.
+
 ## 1.0.1 - 2026-04-05
 
 ### Added
