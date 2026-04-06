@@ -1,6 +1,4 @@
-from typing import Any, Callable
-
-OPERATORS: dict[str, type[AbstractOperator]] = {}
+from typing import Any
 
 
 class AbstractOperator:
@@ -16,18 +14,6 @@ class AbstractOperator:
         raise NotImplementedError()
 
 
-def register_operator(
-    symbol: str,
-) -> Callable[[type[AbstractOperator]], type[AbstractOperator]]:
-    def decorator(cls: type[AbstractOperator]) -> type[AbstractOperator]:
-        OPERATORS[symbol] = cls
-        cls.sql_symbol = symbol
-        return cls
-
-    return decorator
-
-
-@register_operator("=")
 class EqualOperator(AbstractOperator):
     def to_sql(self, value: Any) -> tuple[str, tuple[Any, ...]]:
         return f"{self._col_ref} = ?", (value,)
@@ -36,7 +22,6 @@ class EqualOperator(AbstractOperator):
         return f"{self._col_ref} = {value_ref}", tuple()
 
 
-@register_operator("!=")
 class NotEqualOperator(AbstractOperator):
     def to_sql(self, value: Any) -> tuple[str, tuple[Any, ...]]:
         return f"{self._col_ref} != ?", (value,)
@@ -45,7 +30,6 @@ class NotEqualOperator(AbstractOperator):
         return f"{self._col_ref} != {value_ref}", tuple()
 
 
-@register_operator("<")
 class LessThanOperator(AbstractOperator):
     def to_sql(self, value: Any) -> tuple[str, tuple[Any, ...]]:
         return f"{self._col_ref} < ?", (value,)
@@ -54,7 +38,6 @@ class LessThanOperator(AbstractOperator):
         return f"{self._col_ref} < {value_ref}", tuple()
 
 
-@register_operator(">")
 class GreaterThanOperator(AbstractOperator):
     def to_sql(self, value: Any) -> tuple[str, tuple[Any, ...]]:
         return f"{self._col_ref} > ?", (value,)
@@ -63,7 +46,6 @@ class GreaterThanOperator(AbstractOperator):
         return f"{self._col_ref} > {value_ref}", tuple()
 
 
-@register_operator("<=")
 class LessThanOrEqualOperator(AbstractOperator):
     def to_sql(self, value: Any) -> tuple[str, tuple[Any, ...]]:
         return f"{self._col_ref} <= ?", (value,)
@@ -72,7 +54,6 @@ class LessThanOrEqualOperator(AbstractOperator):
         return f"{self._col_ref} <= {value_ref}", tuple()
 
 
-@register_operator(">=")
 class GreaterThanOrEqualOperator(AbstractOperator):
     def to_sql(self, value: Any) -> tuple[str, tuple[Any, ...]]:
         return f"{self._col_ref} >= ?", (value,)
@@ -81,7 +62,6 @@ class GreaterThanOrEqualOperator(AbstractOperator):
         return f"{self._col_ref} >= {value_ref}", tuple()
 
 
-@register_operator("LIKE")
 class LikeOperator(AbstractOperator):
     def to_sql(self, value: Any) -> tuple[str, tuple[Any, ...]]:
         return f"{self._col_ref} LIKE ?", (value,)
@@ -90,7 +70,6 @@ class LikeOperator(AbstractOperator):
         return f"{self._col_ref} LIKE {value_ref}", tuple()
 
 
-@register_operator("ILIKE")
 class IlikeOperator(AbstractOperator):
     def to_sql(self, value: Any) -> tuple[str, tuple[Any, ...]]:
         return f"{self._col_ref} ILIKE ?", (value,)
@@ -99,7 +78,6 @@ class IlikeOperator(AbstractOperator):
         return f"{self._col_ref} ILIKE {value_ref}", tuple()
 
 
-@register_operator("IN")
 class InOperator(AbstractOperator):
     def to_sql(self, value: Any) -> tuple[str, tuple[Any, ...]]:
         placeholders: str = ", ".join("?" * len(value))
@@ -109,7 +87,6 @@ class InOperator(AbstractOperator):
         return f"{self._col_ref} IN ({value_ref})", tuple()
 
 
-@register_operator("NOT IN")
 class NotInOperator(AbstractOperator):
     def to_sql(self, value: Any) -> tuple[str, tuple[Any, ...]]:
         placeholders: str = ", ".join("?" * len(value))
