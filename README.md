@@ -50,6 +50,7 @@ SQL Fusion is built for the middle ground:
 
 - it stays small and chainable instead of turning into a full ORM
 - it keeps SQL parameterized by default, so the caller controls execution safely
+- it gives you SQL-like syntax inside Python, with type hints and a clean separation of clauses, inspired by SQLAlchemy Core but without the heavy machinery of a full expression system
 - it supports real SQL building blocks like joins, subqueries, CTEs, and grouping helpers without forcing a dialect-specific API
 - it adds automatic alias management so common queries stay readable even as they grow
 - it exposes `compile_expression()` for the cases where the final SQL needs a backend-specific rewrite
@@ -647,3 +648,17 @@ The library also exposes a few built-in compile-time helpers:
 | SQLFactory | General-purpose SQL builder | `SELECT`, `INSERT`, `UPDATE`, `DELETE` | Yes, it emits placeholders and keeps args separately | No, subquery and join aliases are mostly explicit and part of the statement shape | `JOIN`, subselects, CTEs, window functions, set operations, `INSERT ... SELECT`, MySQL-style duplicate-key handling | MySQL / SQLite / PostgreSQL / Oracle / custom dialects, async execution helpers | Full-featured and explicit, with a heavier API than lightweight builders |
 | SQL Fusion | Lightweight chainable builder | `SELECT`, `INSERT`, `UPDATE`, `DELETE` | Yes, it returns `(sql, params)` and leaves binding to the caller | Yes, it auto-assigns stable table aliases and reuses them for subqueries and joins | `JOIN` variants including `CROSS`, `SEMI`, `ANTI`, subqueries, recursive CTEs, `ROLLUP`, `CUBE`, `GROUPING SETS`, functions, comments, `EXPLAIN` / `ANALYZE`, `DELETE RETURNING` | Backend-agnostic, `compile_expression()` hook for rewrites | Best when you want a compact, composable builder with post-processing hooks and no execution layer |
 
+## Syntax Comparison
+
+The examples below are representative shapes, not copy-paste snippets for every library. Where a library exposes a `Table`
+object, the snippet uses it.
+
+| Project | Typical syntax shape |
+| --- | --- |
+| SQL Fusion | `users = Table("users"); orders = Table("orders"); select(users.id, users.name).from_(users).join(orders, users.id == orders.user_id).where(users.active == True).compile()` |
+| PyPika | `users = Table("users"); orders = Table("orders"); Query.from_(users).join(orders).on(users.id == orders.user_id).select(users.id, users.name).where(users.active == True).get_sql()` |
+| python-sql | `user = Table("users"); tuple(user.select(user.name, where=user.active == True))` |
+| SQLFactory | `users = Table("users"); orders = Table("orders"); Select(users.id, users.name, table=users, join=[Join(orders, Eq("users.id", "orders.user_id"))]).where(Eq("users.active", True))` |
+| simple-query-builder-python | `qb.select("users").where([["active", "=", True]]).join("orders", on=[["users.id", "=", "orders.user_id"]]).all()` |
+| sqlquerybuilder | `Queryset("users").filter(active=True).join("orders", on="users.id=orders.user_id")` |
+| Py-QueryBuilder | `QueryBuilder("app.users", filters).render("query.sql", query)` |
