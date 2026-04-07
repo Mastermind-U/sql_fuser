@@ -7,7 +7,18 @@ from typing import Any
 
 import pytest
 
-from sql_fusion import Alias, Table, delete, func, insert, select, update
+from sql_fusion import (
+    Alias,
+    Table,
+    delete,
+    except_,
+    func,
+    insert,
+    intersect,
+    select,
+    union,
+    update,
+)
 from sql_fusion.composite_table import CompileExpression
 
 MIN_USER_AGE = 30
@@ -692,3 +703,108 @@ def test_grouped_aggregate_query_without_alias_having(
     rows = _fetch_rows(sqlite_db, query, params)
 
     assert rows == [("completed", 4, 640)]
+
+
+def test_sqlite_union_all_compound_query(
+    sqlite_db: sqlite3.Connection,
+) -> None:
+    sqlite_db.execute(
+        """
+        CREATE TABLE premium_users (
+            id INTEGER PRIMARY KEY,
+            status TEXT NOT NULL
+        )
+        """,
+    )
+    sqlite_db.executemany(
+        "INSERT INTO premium_users VALUES (?, ?)",
+        [
+            (1, "active"),
+            (3, "active"),
+        ],
+    )
+    sqlite_db.commit()
+
+    users = Table("users")
+    premium_users = Table("premium_users")
+    active_users = select(users.id).from_(users).where_by(status="active")
+    premium_active_users = (
+        select(premium_users.id).from_(premium_users).where_by(status="active")
+    )
+
+    query, params = union(
+        active_users,
+        premium_active_users,
+        all=True,
+    ).compile()
+
+    rows = _fetch_rows(sqlite_db, query, params)
+
+    assert sorted(rows) == [(1,), (1,), (3,), (3,)]
+
+
+def test_sqlite_intersect_compound_query(
+    sqlite_db: sqlite3.Connection,
+) -> None:
+    sqlite_db.execute(
+        """
+        CREATE TABLE premium_users (
+            id INTEGER PRIMARY KEY,
+            status TEXT NOT NULL
+        )
+        """,
+    )
+    sqlite_db.executemany(
+        "INSERT INTO premium_users VALUES (?, ?)",
+        [
+            (1, "active"),
+            (3, "active"),
+            (5, "active"),
+        ],
+    )
+    sqlite_db.commit()
+
+    users = Table("users")
+    premium_users = Table("premium_users")
+    active_users = select(users.id).from_(users).where_by(status="active")
+    premium_active_users = (
+        select(premium_users.id).from_(premium_users).where_by(status="active")
+    )
+
+    query, params = intersect(active_users, premium_active_users).compile()
+
+    rows = _fetch_rows(sqlite_db, query, params)
+
+    assert sorted(rows) == [(1,), (3,)]
+
+
+def test_sqlite_except_compound_query(
+    sqlite_db: sqlite3.Connection,
+) -> None:
+    sqlite_db.execute(
+        """
+        CREATE TABLE premium_users (
+            id INTEGER PRIMARY KEY,
+            status TEXT NOT NULL
+        )
+        """,
+    )
+    sqlite_db.executemany(
+        "INSERT INTO premium_users VALUES (?, ?)",
+        [
+            (1, "active"),
+            (3, "active"),
+        ],
+    )
+    sqlite_db.commit()
+
+    users = Table("users")
+    premium_users = Table("premium_users")
+    all_users = select(users.id).from_(users)
+    premium_user_ids = select(premium_users.id).from_(premium_users)
+
+    query, params = except_(all_users, premium_user_ids).compile()
+
+    rows = _fetch_rows(sqlite_db, query, params)
+
+    assert sorted(rows) == [(2,), (4,), (5,)]

@@ -5,7 +5,16 @@ from typing import Any
 
 import pytest
 
-from sql_fusion import Table, delete, func, insert, select, text_op, update
+from sql_fusion import (
+    Table,
+    delete,
+    func,
+    insert,
+    select,
+    text_op,
+    union,
+    update,
+)
 
 MIN_USER_AGE = 30
 MIN_JOIN_TOTAL = 100
@@ -924,6 +933,53 @@ def test_update_with_ordered_subquery_in_set_clause(duckdb_db: Any) -> None:
         (2, "2024-01-01 08:00:00"),
         (3, "2000-01-01 00:00:00"),
     ]
+
+
+def test_union_all_by_name(duckdb_db: Any) -> None:
+    duckdb_db.execute(
+        """
+        CREATE TABLE union_left (
+            id INTEGER NOT NULL,
+            name TEXT NOT NULL
+        )
+        """,
+    )
+    duckdb_db.execute(
+        """
+        CREATE TABLE union_right (
+            id INTEGER NOT NULL,
+            name TEXT NOT NULL
+        )
+        """,
+    )
+    duckdb_db.executemany(
+        "INSERT INTO union_left VALUES (?, ?)",
+        [
+            (1, "Alice"),
+        ],
+    )
+    duckdb_db.executemany(
+        "INSERT INTO union_right VALUES (?, ?)",
+        [
+            (2, "Bob"),
+        ],
+    )
+
+    left = Table("union_left")
+    right = Table("union_right")
+    left_query = select(left.id, left.name).from_(left)
+    right_query = select(right.name, right.id).from_(right)
+
+    query, params = union(
+        left_query,
+        right_query,
+        all=True,
+        by_name=True,
+    ).compile()
+
+    rows = _fetch_rows(duckdb_db, query, params)
+
+    assert rows == [(1, "Alice"), (2, "Bob")]
 
 
 def test_delete_user_row(duckdb_db: Any) -> None:

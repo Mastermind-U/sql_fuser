@@ -2,6 +2,7 @@ from .composite_table import Alias, Column, Table, func, text_op
 from .query.delete import delete
 from .query.insert import insert
 from .query.select import select
+from .query.sets import except_, intersect, union
 from .query.update import update
 
 __all__ = [
@@ -9,9 +10,12 @@ __all__ = [
     "Column",
     "Table",
     "delete",
+    "except_",
     "func",
     "insert",
+    "intersect",
     "select",
     "text_op",
+    "union",
     "update",
 ]

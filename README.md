@@ -63,6 +63,7 @@ In short, the goal is to keep the ergonomics of a lightweight builder while stil
 - automatic table aliases
 - composable conditions with `AND`, `OR`, and `NOT`
 - joins, subqueries, and CTEs
+- set operations with `UNION`, `INTERSECT`, and `EXCEPT`
 - ordering and grouping with `GROUP BY`, `ROLLUP`, `CUBE`, and `GROUPING SETS`
 - aggregate and custom SQL functions through `func`
 - backend-specific SQL rewrites through compile expressions
@@ -99,9 +100,12 @@ from sql_fusion import (
     Column,
     Table,
     delete,
+    except_,
     func,
     insert,
+    intersect,
     select,
+    union,
     text_op,
     update,
 )

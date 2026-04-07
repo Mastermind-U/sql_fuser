@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.2.0 - 2026-04-07
+
+### Added
+
+- Support for SQL set operations:
+  - `union(query1, query2, all=False, by_name=False)`
+  - `intersect(q1, q2, all_=False)`
+  - `except_(q1, q2, all_=False)`
+- Public API exports for `union`, `intersect`, and `except_`.
+- Integration coverage for SQLite compound queries using `UNION`, `INTERSECT`,
+  and `EXCEPT`.
+- DuckDB integration coverage for `UNION ALL BY NAME`.
+- Unit tests for the new set operation builders and SQL rendering.
+- README updates documenting the new set operation support.
+
+### Notes
+
+- `UNION ALL BY NAME` is especially useful when two result sets contain the
+  same logical columns in different orders.
+- The set operation builders preserve parameter ordering across both sides of
+  the compound query.
+
 ## 1.1.0 - 2026-04-06
 
 ### Added
