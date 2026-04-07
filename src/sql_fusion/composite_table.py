@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Iterable
 from copy import copy
 from typing import Any, Callable, Self
