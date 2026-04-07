@@ -1,5 +1,6 @@
 """Integration tests for sqlite3 backend."""
 
+import re
 import sqlite3
 from collections.abc import Iterator
 from typing import Any
@@ -7,6 +8,7 @@ from typing import Any
 import pytest
 
 from sql_fusion import Alias, Table, delete, func, insert, select, update
+from sql_fusion.composite_table import CompileExpression
 
 MIN_USER_AGE = 30
 MIN_JOIN_TOTAL = 100
@@ -14,6 +16,31 @@ MAX_PENDING_TOTAL = 60
 NEW_USER_ID = 6
 UPDATED_USER_ID = 2
 DELETED_USER_ID = 4
+
+
+def sqlite_cte_materialization(
+    *,
+    materialized: dict[str, bool],
+) -> CompileExpression:
+    """Rewrite SQLite CTEs to use MATERIALIZED or NOT MATERIALIZED."""
+
+    def rewrite(
+        sql: str,
+        params: tuple[Any, ...],
+    ) -> tuple[str, tuple[Any, ...]]:
+        for cte_name, is_materialized in materialized.items():
+            marker = "MATERIALIZED" if is_materialized else (
+                "NOT MATERIALIZED"
+            )
+            sql = re.sub(
+                rf'("{re.escape(cte_name)}")\s+AS\s+\(',
+                rf"\1 AS {marker} (",
+                sql,
+                count=1,
+            )
+        return sql, params
+
+    return rewrite
 
 
 @pytest.fixture
@@ -196,6 +223,80 @@ def test_complex_subquery_filter(sqlite_db: sqlite3.Connection) -> None:
     rows = _fetch_rows(sqlite_db, query, params)
 
     assert sorted(rows) == [(1, "Alice"), (3, "Carol")]
+
+
+@pytest.mark.parametrize(
+    ("is_materialized", "expected_sql"),
+    [
+        (
+            True,
+            'WITH "paid_orders" AS MATERIALIZED ('
+            'SELECT "a"."user_id", "a"."total" FROM "orders" AS "a" '
+            'WHERE "a"."status" = ?'
+            ') SELECT "c"."name", SUM("b"."total") FROM "paid_orders" AS "b" '
+            'INNER JOIN "users" AS "c" ON "b"."user_id" = "c"."id" '
+            'GROUP BY "c"."name"',
+        ),
+        (
+            False,
+            'WITH "paid_orders" AS NOT MATERIALIZED ('
+            'SELECT "a"."user_id", "a"."total" FROM "orders" AS "a" '
+            'WHERE "a"."status" = ?'
+            ') SELECT "c"."name", SUM("b"."total") FROM "paid_orders" AS "b" '
+            'INNER JOIN "users" AS "c" ON "b"."user_id" = "c"."id" '
+            'GROUP BY "c"."name"',
+        ),
+    ],
+)
+def test_sqlite_cte_materialization(
+    sqlite_db: sqlite3.Connection,
+    is_materialized: bool,
+    expected_sql: str,
+) -> None:
+    sqlite_db.executemany(
+        "INSERT INTO orders VALUES (?, ?, ?, ?)",
+        [
+            (7, 1, 120, "paid"),
+            (8, 3, 200, "paid"),
+            (9, 5, 300, "paid"),
+        ],
+    )
+    sqlite_db.commit()
+
+    orders = Table("orders")
+    users = Table("users")
+    paid_orders = Table("paid_orders")
+
+    paid_orders_cte = (
+        select(orders.user_id, orders.total)
+        .from_(orders)
+        .where_by(status="paid")
+    )
+
+    query, params = (
+        select(users.name, func.sum(paid_orders.total))
+        .with_(paid_orders=paid_orders_cte)
+        .from_(paid_orders)
+        .join(users, paid_orders.user_id == users.id)
+        .group_by(users.name)
+        .compile_expression(
+            sqlite_cte_materialization(
+                materialized={"paid_orders": is_materialized},
+            ),
+        )
+        .compile()
+    )
+
+    assert query == expected_sql
+    assert params == ("paid",)
+
+    rows = _fetch_rows(sqlite_db, query, params)
+
+    assert sorted(rows) == [
+        ("Alice", 120),
+        ("Carol", 200),
+        ("Erin", 300),
+    ]
 
 
 def test_insert_user_row(sqlite_db: sqlite3.Connection) -> None:
